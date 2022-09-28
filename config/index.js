@@ -12,17 +12,22 @@ const config = {
 	i18n,
 	presets: [
 		[
-			'classic',
-			[
-				'@docusaurus/preset-classic',
-				{
-					googleAnalytics: {
-						trackingID: 'G-DBVZBC9QT5',
-						anonymizeIP: true,
-					},
-				},
-			],
+			'@docusaurus/preset-classic',
 			{
+				googleAnalytics: {
+					trackingID: 'G-DBVZBC9QT5',
+					anonymizeIP: true,
+				},
+				gtag: {
+					trackingID: 'G-DBVZBC9QT5',
+					anonymizeIP: true,
+				},
+				sitemap: {
+					changefreq: 'weekly',
+					priority: 0.5,
+					ignorePatterns: [],
+					filename: 'sitemap.xml',
+				},
 				docs: {
 					sidebarPath: require.resolve('./sidebars.js'),
 				},

@@ -13,6 +13,13 @@ const config = {
 	presets: [
 		[
 			'classic',
+			'@docusaurus/preset-classic',
+			{
+				googleAnalytics: {
+					trackingID: 'G-DBVZBC9QT5',
+					anonymizeIP: true,
+				},
+			},
 			{
 				docs: {
 					sidebarPath: require.resolve('./sidebars.js'),

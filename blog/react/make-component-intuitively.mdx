@@ -161,7 +161,7 @@ mouseEnter === true ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRat
 
 ```tsx
 function EnterStarRateContainer({ rating }: { rating: number }) {
-	const { leave, click, active } = useContext(StarRateContext);
+	const { leave, click, setActive } = useContext(StarRateContext);
 	const [starNum, setStarNum] = useState(rating); //별 순번
 
 	return (
@@ -198,7 +198,7 @@ function EnterStarRateContainer({ rating }: { rating: number }) {
 그래서 굳이 안의 함수가 어떤 구조인지 알지 않아도 코드를 이해하기 충분했습니다.
 각 속성 이벤트에 들어간 함수들도 정말 깔끔합니다!
 대표적으로 하나의 이벤트만 살펴보겠습니다.
-`onMouseLeave`에서는 말 그대로 마우스가 떠났다는 `mouseLeave`와 별 순번 상태 초기화를 위한 `setStarNum(0)`이 들어가 있습니다.
+`onMouseLeave`에서는 말 그대로 마우스가 떠났다는 `leave`와 별 순번 상태 초기화를 위한 `setStarNum(0)`이 들어가 있습니다.
 
 `StarRateContainer`밖으로 마우스가 나갔을 경우의 컴포넌트도 마저 살펴봅시다.
 

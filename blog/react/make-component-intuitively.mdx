@@ -129,7 +129,7 @@ export default function App({ onClick }: Props) {
 우선 분기를 나누어보죠.
 
 ```tsx
-mouseEnter === true ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />;
+isMouseEnter ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />;
 ```
 
 이어서 살펴보겠습니다.
@@ -159,33 +159,25 @@ mouseEnter === true ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRat
 
 다음과 같이 2번의 상태만 포함시켜 `StarRateContainer`에 포인터가 들어온 경우의 컴포넌트를 만들었습니다.
 
-```tsx
-function EnterStarRateContainer({ rating }: { rating: number }) {
-	const { leave, click, setActive } = useContext(StarRateContext);
-	const [starNum, setStarNum] = useState(rating); //별 순번
+```tsx title="EnterStarRateContainer.tsx"
+import { ReactComponent as Star } from 'assets/svg/star.svg';
+import { useState, useContext } from 'react';
+import StarRateContext from './StarRateContext';
+
+export default function EnterStarRateContainer({ rating }: { rating: number }) {
+	const { handleMouseLeave, handleClick } = useContext(StarRateContext);
+	const [starNum, setStarNum] = useState(rating);
 
 	return (
 		<div
 			onMouseLeave={() => {
-				// 포인터 나간다!
-				leave();
+				handleMouseLeave();
 				setStarNum(0);
 			}}
 		>
 			{[1, 2, 3, 4, 5].map((num) => (
-				<button
-					key={num}
-					onMouseEnter={() => setStarNum(num)}
-					onClick={() => {
-						click(num); // 나 클릭됐어!
-						setActive?.();
-					}}
-				>
-					<Star
-						key={num}
-						// 지금 가리키고 있는 순번보다 같거나 낮으면 색칠해줘
-						fill={starNum >= num ? '#ff7f23' : '#eee'}
-					/>
+				<button key={num} onMouseEnter={() => setStarNum(num)} onClick={() => handleClick(num)}>
+					<Star key={num} fill={starNum >= num ? '#ff7f23' : '#eee'} />
 				</button>
 			))}
 		</div>
@@ -194,21 +186,25 @@ function EnterStarRateContainer({ rating }: { rating: number }) {
 ```
 
 위 코드를 읽으면서 이런 코드가 정말 직관적인 코드라는 것을 느꼈습니다!
-마지막에 코드를 기술하겠지만, `StarRatingContext`에서 꺼내 쓰고 있는 `leave`, `click`, `setActive`는 정말 말 그대로의 역할을 수행하는 함수입니다.
+마지막에 코드를 기술하겠지만, `StarRatingContext`에서 꺼내 쓰고 있는 `handleMouseLeave`, `handleClick`는 정말 말 그대로의 역할을 수행하는 함수입니다.
 그래서 굳이 안의 함수가 어떤 구조인지 알지 않아도 코드를 이해하기 충분했습니다.
 각 속성 이벤트에 들어간 함수들도 정말 깔끔합니다!
 대표적으로 하나의 이벤트만 살펴보겠습니다.
-`onMouseLeave`에서는 말 그대로 마우스가 떠났다는 `leave`와 별 순번 상태 초기화를 위한 `setStarNum(0)`이 들어가 있습니다.
+`onMouseLeave`에서는 말 그대로 마우스가 떠났다고 조작하는 `handleMouseLeave`와 별 순번 상태 초기화를 위한 `setStarNum(0)`이 들어가 있습니다.
 
 `StarRateContainer`밖으로 마우스가 나갔을 경우의 컴포넌트도 마저 살펴봅시다.
 
 이 경우에는 매겨진 별점 만큼 `Star`를 색칠하는 게 전부입니다.
 
-```tsx
-function LeaveStarRateContainer({ rating }: { rating: number }) {
-	const { enter } = useContext(StarRateContext);
+```tsx title="LeaveStarRateContainer.tsx"
+import { ReactComponent as Star } from 'assets/svg/star.svg';
+import StarRateContext from './StarRateContext';
+import { useContext } from 'react';
+
+export default function LeaveStarRateContainer({ rating }: { rating: number }) {
+	const { handleMouseEnter } = useContext(StarRateContext);
 	return (
-		<div onMouseEnter={enter}>
+		<div onMouseEnter={handleMouseEnter}>
 			{[1, 2, 3, 4, 5].map((num) => (
 				<button key={num}>
 					<Star key={num} fill={rating >= num ? '#ff7f23' : '#eee'} />
@@ -224,7 +220,7 @@ function LeaveStarRateContainer({ rating }: { rating: number }) {
 따라서 다음과 같은 상태가 있으면 적절하겠네요.
 
 ```tsx
-const [mouseEnter, setMouseEnter] = useState(false);
+const [isMouseEnter, setIsMouseEnter] = useState(false);
 ```
 
 그리고 별점도 부모에서 관리해주기로 했었습니다! 별점은 밑의 코드와 같이 `props`로 넘겨주면 되겠네요.
@@ -233,30 +229,37 @@ const [mouseEnter, setMouseEnter] = useState(false);
 const [rating, setRating] = useState(0);
 ```
 
-```tsx title="example"
+```tsx
 <EnterStarRateContainer rating={rating} />
 ```
 
 위 코드를 적용한 `StarRaing` 컴포넌트의 코드입니다!
 
-```tsx
-export default function StarRating({ setActive }: Props) {
+```tsx title="StarRating.tsx"
+import { useMemo, useState } from 'react';
+import StarRateContext from './StarRateContext';
+import EnterStarRateContainer from './EnterStarRateContainer';
+import LeaveStarRateContainer from './LeaveStarRateContainer';
+
+export default function StarRating({ onClick }: { onClick: () => void }) {
 	const [rating, setRating] = useState(0);
-	const [mouseEnter, setMouseEnter] = useState(false);
+	const [isMouseEnter, setIsMouseEnter] = useState(false);
 
 	const value = useMemo(
 		() => ({
-			enter: () => setMouseEnter(true),
-			leave: () => setMouseEnter(false),
-			click: (num: number) => setRating(num),
-			setActive: () => setActive?.(),
+			handleMouseEnter: () => setIsMouseEnter(true),
+			handleMouseLeave: () => setIsMouseEnter(false),
+			handleClick: (num: number) => {
+				setRating(num);
+				onClick?.();
+			},
 		}),
-		[setActive],
+		[onClick],
 	);
 
 	return (
 		<StarRateContext.Provider value={value}>
-			{mouseEnter === true ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />}
+			{isMouseEnter ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />}
 		</StarRateContext.Provider>
 	);
 }
@@ -266,49 +269,42 @@ export default function StarRating({ setActive }: Props) {
 
 이 뿐만이 아니라 컴포넌트 `<LeaveStarRateContainer />`는 readonly기능을 하는 별점으로도 재활용할 수도 있겠네요!
 
-아래의 코드는 직관적이게 수정한 전체 코드입니다.
+아래의 코드는 위의 코드를 한데 묶어놓은 것입니다.
 한 번 맨 처음 소개했던 `StarRating.tsx`와 비교했을 때 정말 직관적인지, 한 눈에 보기 쉬운지 비교해보세요.
 
-```tsx title="StarRating.tsx"
-import { ReactComponent as Star } from 'assets/svg/star.svg';
-import { createContext, useMemo, useState } from 'react';
-//hook으로 커스텀한 useContext 함수입니다.
-import useContext from '../../utils/hooks/useContext';
+```tsx
+// StarRating.tsx
+export default function StarRating({ onClick }: { onClick: () => void }) {
+	const [rating, setRating] = useState(0);
+	const [isMouseEnter, setIsMouseEnter] = useState(false);
 
-interface StarRateContextType {
-	enter: () => void;
-	leave: () => void;
-	click: (num: number) => void;
-	setActive?: () => void;
-}
+	const value = useMemo(
+		() => ({
+			handleMouseEnter: () => setIsMouseEnter(true),
+			handleMouseLeave: () => setIsMouseEnter(false),
+			handleClick: (num: number) => {
+				setRating(num);
+				onClick?.();
+			},
+		}),
+		[onClick],
+	);
 
-interface Props {
-	setActive: () => void;
-}
-
-export const StarRateContext = createContext<StarRateContextType | null>(null);
-
-function LeaveStarRateContainer({ rating }: { rating: number }) {
-	const { enter } = useContext(StarRateContext);
 	return (
-		<div onMouseEnter={enter}>
-			{[1, 2, 3, 4, 5].map((num) => (
-				<button key={num}>
-					<Star key={num} fill={rating >= num ? '#ff7f23' : '#eee'} />
-				</button>
-			))}
-		</div>
+		<StarRateContext.Provider value={value}>
+			{isMouseEnter ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />}
+		</StarRateContext.Provider>
 	);
 }
-
-function EnterStarRateContainer({ rating }: { rating: number }) {
-	const { leave, click, setActive } = useContext(StarRateContext);
+//EnterStarRateContainer.tsx
+export default function EnterStarRateContainer({ rating }: { rating: number }) {
+	const { handleMouseLeave, handleClick } = useContextCheckNull(StarRateContext);
 	const [starNum, setStarNum] = useState(rating);
 
 	return (
 		<div
 			onMouseLeave={() => {
-				leave();
+				handleMouseLeave();
 				setStarNum(0);
 			}}
 		>
@@ -317,8 +313,7 @@ function EnterStarRateContainer({ rating }: { rating: number }) {
 					key={num}
 					onMouseEnter={() => setStarNum(num)}
 					onClick={() => {
-						click(num);
-						setActive?.();
+						handleClick(num);
 					}}
 				>
 					<Star key={num} fill={starNum >= num ? '#ff7f23' : '#eee'} />
@@ -327,25 +322,17 @@ function EnterStarRateContainer({ rating }: { rating: number }) {
 		</div>
 	);
 }
-
-export default function StarRating({ setActive }: Props) {
-	const [rating, setRating] = useState(0);
-	const [mouseEnter, setMouseEnter] = useState(false);
-
-	const value = useMemo(
-		() => ({
-			enter: () => setMouseEnter(true),
-			leave: () => setMouseEnter(false),
-			click: (num: number) => setRating(num),
-			setActive: () => setActive?.(),
-		}),
-		[setActive],
-	);
-
+//LeaveStarRateContainer.tsx
+export default function LeaveStarRateContainer({ rating }: { rating: number }) {
+	const { handleMouseEnter } = useContextCheckNull(StarRateContext);
 	return (
-		<StarRateContext.Provider value={value}>
-			{mouseEnter === true ? <EnterStarRateContainer rating={rating} /> : <LeaveStarRateContainer rating={rating} />}
-		</StarRateContext.Provider>
+		<div onMouseEnter={handleMouseEnter}>
+			{[1, 2, 3, 4, 5].map((num) => (
+				<button key={num}>
+					<Star key={num} fill={rating >= num ? '#ff7f23' : '#eee'} />
+				</button>
+			))}
+		</div>
 	);
 }
 ```

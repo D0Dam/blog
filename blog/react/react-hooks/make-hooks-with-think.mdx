@@ -1,0 +1,270 @@
+---
+date: 2022-10-05
+authors: d0dam
+title: 'hooks는 생각하고 만드세요.....제발'
+description: 'hooks가 react에 도입되면서 class 없이 상태와 여러 react의 기능을 사용하게 해주었다. hooks의 도입으로 react에 신세계가 열렸고, custom hooks라는 것도 만들기 시작했다. 그런데, hooks... 당신은 생각하고 만들고 있나요?'
+keywords: ['React', 'react typescript', hooks', 'react hooks', 'custom hooks']
+tags:
+  - React
+---
+
+hooks가 react에 도입되면서 class 없이 상태와 여러 react의 기능을 사용하게 해주었다.
+hooks의 도입으로 react에 신세계가 열렸고, custom hooks라는 것도 만들기 시작했다. 그런데, hooks... 생각하고 만들고 있나요?
+
+<!--truncate-->
+
+## 시작에 앞서...
+
+이 포스트의 내용은 [해당 PR](https://github.com/BCSDLab/JJBAKSA_FRONT_END/pull/22/commits/12ebf43411e91eac3b987ed521b38bf8b5b45e1b)
+reviewer들의 진심 어린 조언과 생각을 담아 정리한 것입니다. 이와 같은 조언을 해 주시고 이 포스트 작성에 도움을 주셔서 정말 감사드립니다.:blush:
+
+## 시작
+
+PR을 하나씩 reslove해 가는 과정에서 한 가지 리뷰에 맞닥트렸습니다.
+
+<img src="/img/blog/make-hooks-with-thinking/PR-make-hooks.png" alt="이미지" style={{ marginBottom: '20px' }} />
+
+기능은 되도록이면 hook으로 분리하는 것이 이번 프로젝트의 컨벤션이었습니다.
+(뒤늦게 알았지만 팀 리더가 custom hooks에 익숙해지라는 의미에서 좀 더 기능을 hook으로 분리하기를 원해 했었습니다.)
+
+그래서 저는 custom hooks를 어떻게 만드는지 찾아보았습니다.
+그리고 각각의 프로젝트 파일에 작성된 상태들을 모두 묶어 custom hooks로 만들어주었습니다!
+예를 들자면 아래와 같이 말이죠.
+
+```ts title="useRate.ts"
+import { useState } from 'react';
+
+export interface StarRatingProps {
+	rating: () => void;
+}
+
+export default function useRate({ rating }: StarRatingProps) {
+	const [hover, setHover] = useState(0);
+	const [click, setClick] = useState(0);
+	const fixStarCount = (num: number) => {
+		setClick(num);
+		rating();
+	};
+	const countStarHover = (num: number) => {
+		setHover(num);
+	};
+	const starHoverLeave = (num: number) => {
+		setHover(num);
+	};
+	return {
+		hover,
+		click,
+		fixStarCount,
+		countStarHover,
+		starHoverLeave,
+	};
+}
+```
+
+그리고 훅을 사용하는 파일에서 아래와 같이 선언해 사용했습니다.
+
+```ts
+const { hover, click, fixStarCount, countStarHover, starHoverLeave } = useRate({ rating });
+```
+
+이렇게 훅을 만들어 오던 사람이 있다면 반성합시다.(저도 같이...)
+그리고 이 포스트를 끝까지 읽어주세요.
+이 훅은 정말 말 그대로 **상태를 통째로 훅에다가 집어 넣어 버린, 생각이 없는** custom hook입니다.
+
+## 문제 찾기
+
+제가 만든 이 훅의 문제를 더 자세히 들여다 봅시다.
+감사하게도 이 훅의 문제가 무엇인지 여러 리뷰를 달아주셨고, 이 리뷰 내용들을 기반으로 이야기 해 보겠습니다.
+
+:::tip
+정말 죄송하지만... 이렇게 만드실거면 굳이 훅을 만드는 의의가 없어보여요.
+useRate 라는 네이밍을 가진 훅을 호출하면 rate 나 rate 관련 메서드를 반환해야 할것 같은데
+rate.hover, rate.fixStartCount, rate.countStarHover 같은 메서드가 하는 역할이 잘 상상이 안가요.
+오히려 이 코드를 유지보수할 사람은 이 훅이 뭔지 다시 파악하는데 시간을 더 쓸 것 같아요.
+사실 저는 이 컴포넌트를 만든다면 애초에 훅을 안 만들었을 것 같아요... 이전 로직이 가독성 면에서 훨씬 나아보여요.
+:::
+
+:::tip
+커스텀 훅 패턴은 단순한 로직 분리로만 사용하시면 안됩니다.
+이 커스텀 훅을 분리하는 것을 common으로 쓸지 이 컴포넌트에만 쓸지는 마음대로 정할 수 있지만 이 컴포넌트(UI)에 종속해서 사용하게 만들면 좋지 않습니다.
+그래서 변수이름을 일반적으로 지을 것, 훅을 다른 곳에서 사용할 것을 리뷰하는 게 자주 코드리뷰에 출현하고 있습니다. 한 번 다시 생각해보고 코드를 검토해보시길 바랍니다.
+:::
+
+`useRate`라는 훅을 호출하면 호출하는 사람은 이렇게 생각할 것입니다.
+
+> '이런 메서드가 있겠지?, 이런걸 반환 해줄거야!'
+
+이 훅은 호출하는 사람의 예상을 모두 뒤엎습니다.
+대부분의 메서드가 문제지만, 대표적으로 한 가지 메서드를 보자면 `hover`라는 메서드는 rate와는 정말 관련이 없어보입니다.
+이런 훅은 코드를 직관적으로 볼 수 없게 합니다.
+위의 리뷰에서도 언급되었다시피 오히려 이 hook이 뭔지 파악하는데 시간을 더 쓰게 될 것입니다.
+그리고 두 번째 리뷰에서 알다시피 제 훅은 단순히 로직을 분리한 완벽한 예시라고 할 수 있겠네요.
+
+## Hook이 무엇인지 생각하기
+
+그럼 hook은 어떻게 만들어야 할까요?
+아니 일단 hook이 뭘까요?
+hook을 한국어로 직역하자면 갈고리가 되겠네요.
+갈고리를 생각하면 배라는 이미지가 떠오릅니다.
+어떤 배가 목적지를 향해 항로를 따라 가고 있습니다.
+그런데 이 배는 짐도 함께 날라야 합니다.
+그렇다면 이 배는 짐을 갈고리로 연결하고 항해하게 될 겁니다.
+이 때 짐을 배의 갈고리에 거는 작업을 hooking 이라고 할 수 있겠네요.
+저는 그래서 배를 컴포넌트라고 한다면 hook은 배와 함께하는 기능이 될 것 같다고 생각했습니다!
+
+hook이라는 용어는 React 에서만 쓰이는 용어가 아닙니다.
+대표적으로 웹 훅은 서버에게 특정 동작이 일어나면 클라이언트 측으로 데이터를 전달하도록 hooking 할 수 있습니다.
+
+## Hook을 왜 쓰는지 생각하기
+
+리액트의 컴포넌트는 기본적으로 같은 prop 을 주입하면 내부 로직들을 실행하다가 return 문을 만나고 ReactElement 를 반환합니다.
+이 과정에서 여러 종류의 상황에 대응하기 위해서는 컴포넌트 내부 코드 만으로 해결할 수 없는 경우가 생깁니다.
+hook은 이를 지원할 수 있습니다.
+
+대표적인 react hooks는 무엇을 지원해주고 있을까요?
+
+- useState
+  - 컴포넌트가 호출 될 때 상태가 필요합니다.
+  - 이 상태는 컴포넌트에 활용될 수도 있습니다.
+- useEffect
+  - 컴포넌트 내부 상태가 변경될 때마다 Side Effect 가 발생합니다.
+  - 의존성과 callback 함수를 넘길테니 의존성이 변경될 때마다 callback 함수를 호출해줍니다.
+- useRef
+  - 컴포넌트가 여러 번 호출되더라도 바뀌지 않는 동일한 reference 가 필요합니다.
+
+React Component는 선언적인 패러다임을 따릅니다.
+**Hook 또한 선언적**이어야 합니다.
+
+:::info
+선언형 프로그래밍?
+
+선언형 프로그래밍은 "무엇" 에 대해 초점을 맞추는 프로그래밍 기법이라고 말할 수 있겠습니다.
+"무엇" 에 대해 초점을 맞췄기 때문에 같은 값을 주입하면 무엇을 반환하는지 예측할 수 있어야 합니다.
+그렇기 때문에 같은 값에 대해 같은 결과가 나와야 합니다. 즉, 순수하게 작성되어야 합니다.
+:::
+
+아시다시피 React Component에서 같은 Props 를 주입하면 같은 ReactElement 가 반환됨을 기대할 수 있습니다.
+Hook도 동일합니다. Hook에서도 **같은 인자를 넣으면 같은 동작을 기대**할 수 있어야 합니다.
+
+## 좋은 Hook을 어떻게 작성할지 생각하기
+
+위에서 이야기 했다시피 선언적인 훅은 순수하게 작성되는 것이 이상적입니다.
+순수하다는 의미는 위에서도 언급했습니다.
+같은 인자를 넣었을 때 같은 동작을 하기를 기대하고 이 동작을 했을 때 어떤 값을 가질 수 있고 어떤 메서드를 사용 수 있는지 기대할 수 있다는 의미입니다.
+
+이렇게 훅을 작성하려면 어떻게 해야할까요?
+이 시점에서 추상적으로 작성하려는 고민을 해야 합니다.
+보다 추상적으로 코드를 만들 수록, 여러 모듈에서 사용할 수 있는 로직이 만들어집니다.
+
+이 관점을 토대로 저는 좋은 훅에 관해 아래와 같은 의견을 얻을 수 있었습니다.
+
+- 컴포넌트 내부에 여러 관심사가 존재하는가?
+  - 만약 그렇다면, 훅으로 관심사를 분리할 수 있다.
+  - 그렇지 않다면 훅을 만듦으로써 오히려 가독성을 해칠 수도 있으니 고민을 해봐야 한다.
+- 훅에 여러 관심사가 존재하는가?
+  - 만약 그렇다면, 별로 좋지 못한 훅이다. 훅은 선언적이여야 한다. 하나의 문맥을 가지도록 훅을 쪼갠다.
+- 다른 컴포넌트에서도 사용될 수 있도록 훅은 순수하게 만들어지는가?
+  - 만약 그렇지 않다면 별로 좋지 못한 훅일 가능성이 있다.
+  - Side Effect 는 컴포넌트에서 useEffect 로 감싸주는 것이 좋다고 생각한다.
+- 훅의 반환값 네이밍은 직관적으로 만들어질 수 있는가?
+  - 네이밍이 직관적으로 잘 만들어지지 않는다면 관심사가 잘 드러나지 않아서 그럴 가능성이 크다.
+  - 어설프게 훅을 만듦으로써 가독성을 해치는 것보단 훅을 만들지 않는것이 낫다.
+
+여기에서 말하는 좋은 훅의 예시를 살펴봅시다. 아래는 `useHistory`라는 hook입니다.
+
+```
+const history = useHistory();
+```
+
+이 hook은 `history.pop`, `history.push`, `history.replace`와 같은 메서드를 사용할 수 있습니다.
+
+history는 그 자체로 history라는 관심사 하나를 다룹니다.
+그리고 history라는 주제는 특정 컴포넌트에 얽매이지 않고 여러 컴포넌트에서 쓰일 수 있을 것 같습니다.
+`pop`, `push`, `replace`라는 메서드의 네이밍도 정말 직관적입니다.
+
+이렇게 `좋은 훅`이라고 부를 수 있는 훅은 위의 의견을 모두 만족하고 있네요!
+
+이제 좋은 훅을 보았으니, 아래의 훅을 살펴보고 고쳐봅시다.
+
+```tsx title="useCheckRate"
+export default function useCheckRate() {
+	const [isActive, setIsActive] = useState(false);
+	const setActive = () => {
+		setIsActive(true);
+	};
+	const setDeActive = () => {
+		setIsActive(false);
+	};
+	return {
+		isActive,
+		setActive,
+		setDeActive,
+	};
+}
+```
+
+`useCheckRate` 훅은 단순히 `setActive`를 하면 상태를 true로, `setDeActive`를 하면 상태를 false로 바꾸어줍니다.
+언뜻보면 알기 쉬울수도, 한 문맥에 있다고 생각이 듭니다.
+이 생각까지는 맞는 것 같습니다.
+하지만 문제는 이 훅은 이름이 `useCheckRate`라는 점입니다.
+이 훅은 더욱 추상화가 가능한 구조에 있습니다.
+`useCheckRate`라는 이름은 이 가능성을 막고 있습니다.
+그렇다면 이름은 제외하고 타입과 상태, 함수가 하는 역할만을 살펴볼까요?
+
+- boolean이라는 상태를 다룬다.
+- 상태를 true로 바꾸어준다.
+- 상태를 false로 바꾸어준다.
+
+네, 이게 전부입니다. 그렇다면 boolean이라는 상태를 다루는 훅이니 `useBooleanState`는 어떨까요?
+몇가지 메서드를 좀 더 추가하면 다음과 같이 만들 수 있을 겁니다.
+
+```tsx title="useBooleanState"
+import { Dispatch, SetStateAction, useCallback, useState } from 'react';
+
+interface ReturnType {
+	value: boolean;
+	setValue: Dispatch<SetStateAction<boolean>>;
+	setTrue: () => void;
+	setFalse: () => void;
+	toggle: () => void;
+}
+
+export default function useBooleanState(defaultValue?: boolean): ReturnType {
+	const [value, setValue] = useState(!!defaultValue);
+
+	const setTrue = useCallback(() => setValue(true), []);
+	const setFalse = useCallback(() => setValue(false), []);
+	const toggle = useCallback(() => setValue((x) => !x), []);
+
+	return {
+		value,
+		setValue,
+		setTrue,
+		setFalse,
+		toggle,
+	};
+}
+```
+
+어떤가요? 좋은 훅처럼 보이시나요? 단순히 boolean을 다룬다라는 문맥 안에서 다른 컴포넌트에서도 충분히 재사용 가능해 보입니다.
+반환 값 네이밍도 이름 그 자체의 역할을 해주고 있습니다.
+`useCheckRate`라는 훅은 이제 더 이상 필요가 없게 되었습니다.
+점수가 체크되었는지 구분하는 상태를 만들고 싶다면 이제 아래와 같이 만들 수 있습니다.
+
+```ts
+const isRateCheck = useBooleanState(false);
+// 체크 되었다고 하면
+isRateCheck.setTrue;
+// 체크 안되었다고 하면
+isRateCheck.setFalse;
+// 특정 버튼을 누를 때마다 상태가 변한다고 하면
+isRateCheck.toggle;
+```
+
+이렇게 특정 컴포넌트 내에서의 역할과 이름만 보기보다는 상태와 그 상태를 변경해주는 함수 자체에 관심을 가지고 살펴보면 추상화 할 수 있는 훅이 나오기도 합니다.
+
+## 무조건적이지는 않다.
+
+하지만 무조건 훅은 재사용 되어야만하고, 그 자체로 순수해야만 한다고 할 수는 없습니다.
+실제로 가독성 면에서 선언적인 훅을 만듦으로써 문맥을 구분하는 방식은 현업에서도 자주 사용한다고 합니다.
+대신에 이런 경우에는 상위 모듈이 아닌 최대한 낮은 hierarchy(계층) 에 훅을 만드려고 해야할 것입니다.

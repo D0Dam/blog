@@ -15,7 +15,7 @@ export default function Utterance() {
 
       script.src = 'https://utteranc.es/client.js';
       script.setAttribute('repo', 'D0Dam/blog');
-      script.setAttribute('issue-term', 'title');
+      script.setAttribute('issue-term', 'pathname');
       script.setAttribute('label', 'comment');
       script.setAttribute('theme', utterancesTheme);
       script.crossOrigin = 'anonymous';

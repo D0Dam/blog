@@ -12,7 +12,7 @@ permissions:
 jobs:
   deploy:
     name: github pages 로 배포
-    runs-on: ubuntu-lateast
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: node 세팅

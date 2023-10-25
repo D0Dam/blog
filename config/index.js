@@ -2,7 +2,7 @@ const themeConfig = require('./theme');
 const i18n = require('./i18n');
 const config = {
   title: "d0dam's-log",
-  url: 'https://d0dam.vercel.app',
+  url: 'https://d0dam.xyz',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',

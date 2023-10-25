@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdodam_log=self.webpackChunkdodam_log||[]).push([[6137],{3362:o=>{o.exports=JSON.parse('{"permalink":"/blog/tags/js","page":1,"postsPerPage":10,"totalPages":1,"totalCount":2,"blogDescription":"Blog","blogTitle":"Blog"}')}}]);

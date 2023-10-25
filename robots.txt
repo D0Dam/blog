@@ -1,0 +1,4 @@
+User-agent:*
+Allow:/
+
+Sitemap: http://d0dam.com/sitemap.xml

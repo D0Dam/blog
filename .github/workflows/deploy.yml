@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - '.github/workflows/deploy.yml'
+      - 'website/**'
 
 permissions:
   contents: write
@@ -13,8 +14,11 @@ jobs:
   deploy:
     name: github pages 로 배포
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: node 세팅
         uses: actions/setup-node@v3
         with:
@@ -26,10 +30,10 @@ jobs:
       - name: build
         run: yarn build
 
-      - name: github pages에 정달
+      - name: github pages에 전달
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publich_dir: ./build
+          publich_dir: ./website/build
           user_name: github-actions[bot]
           user_email: 41898282+github-actions[bot]@users.noreply.github.com

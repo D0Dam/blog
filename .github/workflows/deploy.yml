@@ -40,6 +40,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'package.json'
 
 jobs:
   deploy:

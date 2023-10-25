@@ -40,24 +40,22 @@ on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: pnpm/action-setup@v2.0.1 # pnpm 사용시 추가
-        with:
-          version: 7.0.0-rc.2
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
-          cache: pnpm # pnpm으로 cache 설정 변경
+          node-version: 18.x
+          cache: yarn # pnpm으로 cache 설정 변경
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --frozen-lockfile
       - name: Build website
-        run: pnpm build
+        run: yarn build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

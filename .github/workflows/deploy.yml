@@ -6,13 +6,12 @@ on:
       - '.github/workflows/deploy.yml'
       - 'website/**'
 
-permissions:
-  contents: write
-
 jobs:
   deploy:
     name: github pages 로 배포
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: website

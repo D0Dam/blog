@@ -12,8 +12,6 @@ jobs:
     runs-on: ubuntu-lateast
     permissions:
       contents: write
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
     defaults:
       run:
         working-directory: website

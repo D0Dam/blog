@@ -16,12 +16,16 @@
 	},
 	"dependencies": {
 		"@docusaurus/core": "^2.2.0",
+		"@docusaurus/init": "^2.0.0-beta.6",
 		"@docusaurus/preset-classic": "^2.2.0",
 		"@mdx-js/react": "^1.6.22",
+		"classic": "^0.0.2",
 		"clsx": "^1.2.1",
+		"init": "^0.1.2",
 		"prism-react-renderer": "^1.3.5",
 		"react": "^17.0.2",
-		"react-dom": "^17.0.2"
+		"react-dom": "^17.0.2",
+		"website": "^0.1.1"
 	},
 	"devDependencies": {
 		"@docusaurus/module-type-aliases": "^2.2.0",

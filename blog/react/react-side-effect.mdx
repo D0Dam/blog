@@ -23,7 +23,7 @@ tags:
 
 리액트 프로젝트를 할 때마다 데이터 요청은 빠지지 않는 것 같습니다.
 페이지가 뜨는 순간 데이터를 요청하고, 응답 받은 내용을 바탕으로 화면을 보여주기 위한 상황이 많이 있습니다.
-그럴 때 마다 당연하다는 식으로 다른 라이브러리를 쓰지 않는다면 `useEffect`를 이용해 데이터를 받아옵니다.
+그럴 때 마다 당연하다는 식으로 다른 라이브러리를 쓰지 않는다면 useEffect 를 이용해 데이터를 받아옵니다.
 
 이 뿐만 아니라 의도치 않게 외부의 특정 값이 변화한다면 특정 데이터 요청을 해야되는 경우도 많이 만나볼 수 있습니다.
 
@@ -113,11 +113,11 @@ import { useEffect } from 'react';
 
 function MyComponent({ a }) {
   useEffect(() => {
-    // 여기의 코드는 첫 렌더링 후에만 실행됩니다.
+    // 여기의 코드는 최초의 렌더링 후에만 실행됩니다.
   }, []);
 
   useEffect(() => {
-    // 여기의 코드는 첫 렌더링과 a 의 값이 변화할 때 실행됩니다.
+    // 여기의 코드는 최초의 렌더링과 a 의 값이 변화할 때 실행됩니다.
   }, [a]);
 
   return <div />;
@@ -325,7 +325,7 @@ function List({ items }) {
 ```
 
 이 코드가 부적절한 이유는 Effect 가 발생하기 전에 렌더링을 할 때는 items 가 바뀌어도 예전의 selection 으로 렌더링 하기 때문입니다.
-렌더링을 한 번거친 후에 다시 selection 을 null 로 초기화 시켜 재렌더링 되었을 때 비로소 원하는 결과값을 얻을 수 있죠.
+렌더링을 한 번거친 후에 다시 selection 을 null 로 초기화 시켜 리렌더링 되었을 때 비로소 원하는 결과값을 얻을 수 있죠.
 
 그래서 다음과 같은 방법을 생각해 볼 수 있습니다.
 
@@ -406,7 +406,7 @@ sendUserMessage(message);
 
 일반적으로는 message 를 '메세지 보내기' 와 같은 이벤트를 클릭하는 행동을 해서 메세지를 보내고 싶을 것 같아요.
 
-이 메세지는 반응형 값이라고 했으니 props 로 전달된 값일 수도, useState 로 값일 수도 있겠죠.
+이 메세지는 반응형 값이라고 했으니 props 로 전달된 값일 수도, useState 로 전달된 값일 수도 있겠죠.
 
 ```tsx
 function Example({ message1 = '' }) {
@@ -633,7 +633,7 @@ function ChatRoom({ roomId }) {
 ## 화면을 그리기 전에 Effect 실행시키기
 
 기존의 useEffect 의 경우 렌더링 이후 화면이 paint 되고 나서 Effect 내부 로직을 수행합니다.
-그리고 다시 내부 로직에 의해 변경된 DOM을 재렌더링 하죠.
+그리고 다시 내부 로직에 의해 변경된 DOM을 리렌더링 하죠.
 
 <img src="/img/blog/react-side-effect/useEffect-lifecycle.png" alt="이미지" style={{ marginBottom: '20px' }} />
 
@@ -657,7 +657,7 @@ function Tooltip() {
 
   useEffect(() => {
     const { height } = ref.current.getBoundingClientRect();
-    setTooltipHeight(height); // 실제 높이를 구한 후 리 렌더링을 하고 화면을 다시 그립니다.
+    setTooltipHeight(height); // 실제 높이를 구한 후 리렌더링을 하고 화면을 다시 그립니다.
   }, []);
 
   // ...아래에 작성될 렌더링 로직에 tooltipHeight를 사용합니다...
@@ -681,14 +681,14 @@ function Tooltip() {
   useLayoutEffect(() => {
     // useLayoutEffect를 사용했기 때문에 렌더링이 일어난 이후 화면을 그리지 않고 아래 작업을 수행합니다.
     const { height } = ref.current.getBoundingClientRect();
-    setTooltipHeight(height); // 실제 높이를 구한 후 리 렌더링을 하고 화면을 그립니다.
+    setTooltipHeight(height); // 실제 높이를 구한 후 리렌더링을 하고 화면을 그립니다.
   }, []);
 
   // ...아래에 작성될 렌더링 로직에 tooltipHeight를 사용합니다...
 }
 ```
 
-이 경우 height 가 0 인 화면을 렌더링하지만 useLayoutEffect 에서 화면을 그리기 전에 다시 리 렌더링을 하기 때문에 최종적으로 사용자는 한 번만 화면이 그려지게 보입니다.
+이 경우 height 가 0 인 화면을 렌더링하지만 useLayoutEffect 에서 화면을 그리기 전에 다시 리렌더링을 하기 때문에 최종적으로 사용자는 한 번만 화면이 그려지게 보입니다.
 
 다른말로, 사용자는 렌더링이 2번 일어났다는 것을 인지할 수 없습니다. 왜냐하면 화면이 한 번만 그려졌다고 생각하기 때문이죠.
 

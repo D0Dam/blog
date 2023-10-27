@@ -6,7 +6,7 @@
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://d0dam.xyz/blog"/>
     <subtitle>d0dam's-log Blog</subtitle>
-    <icon>https://d0dam.xyz/../static/img/logos/favicon.ico</icon>
+    <icon>https://d0dam.xyz/img/logos/favicon.ico</icon>
     <entry>
         <title type="html"><![CDATA[리액트 사이드 이펙트 탐구하기]]></title>
         <id>https://d0dam.xyz/blog/react/react-side-effect</id>

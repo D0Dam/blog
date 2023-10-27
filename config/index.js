@@ -6,9 +6,9 @@ const config = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: '../static/img/logos/favicon.ico',
+  favicon: '/img/logos/favicon.ico',
   organizationName: 'https://github.com/d0dam', // Usually your GitHub org/user name.
-  projectName: 'blog', // Usually your repo name.
+  projectName: 'd0dam-log', // Usually your repo name.
   i18n,
   presets: [
     [

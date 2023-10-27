@@ -34,9 +34,9 @@ const footer = {
   links: [
     {
       html: `
-        Powered by <a href="https://docusaurus.io/" target="_blank" rel="noreferrer noopener">Docusaurus 2</a>, Hosted by <a href="https://vercel.com/" target="_blank" rel="noreferrer noopener">Vercel</a>
+        Powered by <a href="https://docusaurus.io/" target="_blank" rel="noreferrer noopener">Docusaurus 2</a>, Hosted by <a href="https://github.com/" target="_blank" rel="noreferrer noopener">github pages</a>
         <br />
-        Copyright © ${new Date().getFullYear()} <a href="https://github.com/d0dam" target="_blank" rel="noreferrer noopener">minjaeKim</a>. All rights reserved.
+        Copyright © 2022 <a href="https://github.com/d0dam" target="_blank" rel="noreferrer noopener">minjaeKim</a>. All rights reserved.
         `,
     },
   ],

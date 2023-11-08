@@ -1,26 +1,37 @@
 import React from 'react';
 import styles from './index.module.css';
 
-export default function HomepageFeatures(): JSX.Element {
-  const gotoBlog = () => window.open('/blog');
-  const gotoGithub = () => window.open('https://github.com/d0dam');
+const recentPosts = require('../../../.docusaurus/docusaurus-plugin-content-blog/default/blog-post-list-prop-default.json');
 
+export default function HomepageFeatures(): JSX.Element {
   return (
-    <div className={styles.container}>
-      <section className={styles.top}>
-        <div>
-          <div>안녕하세요!</div>
-          <div>Javascript 를 사랑하는</div>
-          <div>
-            Frontend 개발자 <strong>도담</strong>입니다 :{')'}
-          </div>
+    <main className={styles.container}>
+      <section className={styles['sidebar-section']}>
+        <div className={styles.sidebar}>
+          <div className={styles['sidebar-name']}>Recent posts</div>
+          <ul>
+            {recentPosts.items.slice(0, 5).map((item, index) => (
+              <li key={index}>
+                <a href={`${item.permalink}`}>{item.title}</a>
+              </li>
+            ))}
+          </ul>
         </div>
-        <img className={styles.img} alt="메인 사진" src="img/d0dam.svg" />
       </section>
-      <section className={styles['button-section']}>
-        <button onClick={gotoBlog}>블로그 보러가기</button>
-        <button onClick={gotoGithub}>깃허브 구경가기</button>
+      <section className={styles['main-section']}>
+        <div className={styles.intro}>
+          <div>
+            <div>안녕하세요!</div>
+            <div>Javascript 를 사랑하는</div>
+            <div>
+              Frontend 개발자 <strong>도담</strong>입니다 :{')'}
+            </div>
+          </div>
+          <img className={styles.img} alt="메인 사진" src="img/d0dam.svg" />
+        </div>
+        <div className={styles.message}>자세한 소개를 준비하고 있어요.🏃🏃</div>
+        <div className={styles.message}>조금만 기다려 주세요.😊</div>
       </section>
-    </div>
+    </main>
   );
 }

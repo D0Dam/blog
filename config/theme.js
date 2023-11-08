@@ -7,7 +7,7 @@ const navbar = {
     alt: 'Logo',
     src: 'img/logos/main.png',
     srcDark: 'img/logos/darkModeMain.png',
-    href: '/blog',
+    href: '/',
     target: '_self',
   },
   items: [

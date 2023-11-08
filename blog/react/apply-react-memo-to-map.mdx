@@ -1,0 +1,249 @@
+---
+date: 2023-11-08
+authors: d0dam
+title: 'React.memo와 지도 커스텀 마커'
+description: '지도에 여러 위치를 표시하기 위해서 저희는 마커를 많이 사용합니다. 기본적으로 지도가 변할 때 마다 지도에 보이는 영역의 마커를 전부 새로 렌더링 하는 것이 기본입니다. 이 과정을 좀 더 효율적으로 만들어 보고자 합니다.'
+keywords: ['React', 'react 지도', 'react memo', 'memo', '메모이제이션']
+tags:
+  - React
+---
+
+import markerBeforeVideoUrl from './videos/marker-before.mp4';
+import markerAfterVideoUrl from './videos/marker-after.mp4';
+import ReactPlayer from 'react-player';
+
+지도에 여러 위치를 표시하기 위해서 저희는 마커를 많이 사용합니다. 기본적으로 지도가 변할 때 마다 지도에 보이는 영역의 마커를 전부 새로 렌더링 하는 것이 기본입니다. 이 과정을 좀 더 효율적으로 만들어 보고자 합니다.
+
+<!--truncate-->
+
+## 지도 마커 만들기
+
+[셀럽잇 프로젝트](https://celuveat.com/map) (유명인이 다녀간 음식점 안내 서비스)를 진행하면서 겪은 일입니다. [해당 PR](https://github.com/woowacourse-teams/2023-celuveat/pull/497)
+
+음식점 위치를 지도상에서 마커로 보여주는 작업을 진행했습니다.
+지도는 google map api를 사용했습니다.
+google map api에서는 별도의 [마커 기능을 지원](https://developers.google.com/maps/documentation/javascript/markers?hl=ko)하지만 이 마커는 사용하지 않았습니다.
+
+서비스에서 제공하려는 마커는 다음과 같은 특징을 갖습니다.
+
+- 호버 및 클릭시 이벤트를 제공할 수 있어야 합니다.
+- 특정 조건에 따라 마커를 다르게 그려야 합니다.
+
+따라서 마커가 아이콘이나 이미지가 아닌 컴포넌트 형태여야 했습니다.
+
+그래서 다음과 같은 OverlayMarker를 만들어서 지도에 입혀주었습니다.
+
+```tsx title="OverlayMarker.tsx"
+// 기존 코드를 이해를 위해 간소화하고 변형하였습니다.
+
+interface OverlayMarkerProps {
+  celeb: { id: number; name: string; profileImageUrl: string };
+  map: google.maps.Map;
+  restaurant: { id: number; name: string; lat: number; lng: number };
+}
+
+function OverlayMarker({ celeb, map, restaurant }: OverlayMarkerProps) {
+  const { id, name, lat, lng } = restaurant;
+  const [isClicked, setIsClicked] = useState(false);
+  const ref = useRef();
+  const hoveredId = useHoveredRestaurantState((state) => state.id);
+
+  const clickMarker = () => setIsClicked(true);
+
+  return (
+    map && (
+      //Overlay 컴포넌트에 자식요소가 props로 전달한 position에 맞게 지도에 Overlay됩니다.
+      <Overlay position={{ lat, lng }} map={map} zIndex={isClicked || hoveredId === restaurantId ? 10 : 0}>
+        <StyledMarkerContainer ref={ref}>
+          <StyledMarker
+            onClick={clickMarker}
+            isClicked={isClicked}
+            isRestaurantHovered={hoveredId === restaurantId}
+            data-cy={`${restaurant.name} 마커`}
+          >
+            <ProfileImage name={celeb.name} imageUrl={celeb.profileImageUrl} size="32px" />
+          </StyledMarker>
+        </StyledMarkerContainer>
+      </Overlay>
+    )
+  );
+}
+
+export default OverlayMarker;
+```
+
+:::tip
+Overlay 컴포넌트를 제작할 때는 아래의 글을 참고했습니다.
+만드는 과정이 궁금하다면 읽어보세요:)
+
+[Building a Custom Google Maps Marker React Component Like Airbnb in Next.js](https://betterprogramming.pub/building-a-custom-google-maps-marker-react-component-like-airbnb-in-next-js-52fb37ccfabb)
+:::
+
+## 문제 확인
+
+이제 한 번 지도에서 마커가 어떻게 표시 되는지 확인해볼까요?
+
+<ReactPlayer playing loop url={markerBeforeVideoUrl} style={{ marginBottom: '20px' }} />
+
+보다시피 지도가 움직일 때 마다 마커 전부를 새로 그리고 있습니다.
+문제는 2가지 입니다.
+
+1. 단순 fetch를 사용해 마커에 데이터를 받고 있으며, 캐싱 로직이 아직 없습니다.
+
+- 따라서 지도의 영역이 바뀔 때 마다 데이터를 fetch 해와서 새로 입히고 있습니다.
+
+2. 지도의 영역이 바뀌면 부모 컴포넌트인 Map 자체가 리렌더링됩니다.
+
+- 따라서 자식 요소인 OverlayMarker도 리렌더링이 일어납니다.
+
+fetch 로직의 경우 앞으로 tanstack-query를 도입할 가능성이 있었습니다.
+tanstack-query를 도입하게 되면 자연스럽게 캐싱을 해주기 때문에 첫 번째 문제는 우선순위를 뒤로 두었습니다.
+
+그래서 이번 포스트에서는 두 번째 문제를 해결해보고자 합니다.
+
+## React.memo 사용하기
+
+제가 원하는 동작은 props가 동일한 marker들은 리렌더링이 일어나지 않게 막는 것입니다.
+이렇게 되면 지도에 새롭게 그려지는 마커만 새롭게 렌더링이 되고, 지도 영역에 이미 그려진 마커는 렌더링이 다시 일어나지 않고 남아있게 됩니다.
+
+컴포넌트에 동일한 props가 들어올 때 렌더링을 방지하고 싶으면 [React.memo](https://react.dev/reference/react/memo)를 사용합니다.
+
+그럼 한번 react memo를 적용해 보도록 하죠.
+
+```tsx title="OverlayMarker.tsx"
+interface OverlayMarkerProps {
+  celeb: { id: number; name: string; profileImageUrl: string };
+  map: google.maps.Map;
+  restaurant: { id: number; name: string; lat: number; lng: number };
+}
+
+//highlight-next-line
+function OverlayMarker({ celeb, map, restaurant }: OverlayMarkerProps) {...} // 생략
+
+export default React.memo(OverlayMarker); // React.memo로 OverlayMarker를 감싸주었습니다.
+```
+
+이렇게 해도 지도의 마커들은 여전히 새로 그려집니다.
+생각대로 동작하지 않는 이유가 두 가지정도 생각납니다.
+
+1. props로 전달되는 celeb과 restaurant은 객체입니다.
+2. props로 전달되는 map이 내부적으로 바뀔 수도 있습니다.
+
+### props로 전달되는 celeb과 restaurant은 객체입니다.
+
+**props로 객체가 전달**된다는 점을 주목해볼까요?
+
+React.memo는 props가 바뀌었다는 것을 판단할 때 **얕은 비교**를 진행합니다.
+따라서 이전의 props와의 얕은 비교 결과가 같지 않을 때마다 컴포넌트가 리렌더링 됩니다.
+
+구체적으로 이야기하자면 React는 [Object.is](https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/Object/is) 비교를 사용하여 컴포넌트의 모든 prop을 이전 값과 비교합니다.
+
+```ts
+Object.is(3, 3); // true
+Object.is(NaN, NaN); // true
+Object.is(-0, 0); // false
+Object.is('1', 1); // false
+Object.is({}, {}); // false
+```
+
+따라서 상위 컴포넌트에서 객체를 전달해 줄때 useMemo를 사용해서 기존의 객체 상태를 보전해 줄 수 있습니다.
+
+예시로 celeb 객체 상태를 보전해주기 위해서는 다음과 같이 짤 수 있습니다.
+
+```tsx title="Map.tsx"
+// 이해를 위해서 로직을 간소화 했습니다.
+
+function Map() {
+	const [celebId, setCelebId] = useState(1);
+	const [celebName, setCelebName] = useState('도담');
+	const [profileImageUrl, setProfileImageUrl] = useState('프로필 이미지 경로');
+
+  // google maps 에서 지원하는 함수입니다.
+  // 지도의 보이는 영역에 변화가 생기면 호출됩니다.
+	const onIdle = () => {...} // fetch를 통해 응답받은 데이터를 state에 저장하는 로직이 들어갑니다.
+
+  // highlight-start
+  const celeb = useMemo(
+    () => ({ celebId, celebName, profileImageUrl }),
+    [celebId, celebName, profileImageUrl]
+  );
+  // highlight-end
+
+	return <Map onIdle={onIdle}><OverlayMarker celeb={celeb} ... /></Map>
+}
+
+function OverlayMarker({ celeb, map, restaurant }: OverlayMarkerProps) {...} // 생략
+
+export default React.memo(OverlayMarker);
+```
+
+### props로 전달되는 map이 내부적으로 바뀔 수도 있습니다.
+
+하지만 전달되는 객체가 celeb과 restaurant로 이를 다 useMemo로 관리해주기 어렵습니다.
+Map에 OverlayMarker가 여러개 들어가게 되면 더욱 관리가 어려워지겠죠.
+
+여기서 추가적으로 OverlayMarker에는 map 이라는 prop도 전달이 되어야 합니다.
+map의 경우 google maps 객체 형태로 전달이 됩니다. 내부적으로 값이 어떻게 바뀌는지도 파악하기 어렵기 때문에 더더욱 다른 방법을 찾아봐야합니다.
+
+React.memo의 두 번째 인자에 주목해 봅시다.
+
+```tsx title="React.memo 형식"
+const MemoizedComponent = memo(SomeComponent, arePropsEqual?)
+```
+
+arePropsEqual은 사용자 정의 함수라고 합니다.
+
+지금과 같이 메모화된 컴포넌트의 props 변경을 최소화하는 것이 매우 힘들 때(불가능 할 때) 사용할 수 있습니다.
+이 경우 React가 얕은 비교를 사용하는 대신에 이전 props와 새로운 props를 비교할 수 있도록 합니다.
+
+OverlayMarker는 이전 props와 같다는 것을 celeb.id와 restaurant.id를 이용해 표현해 줄 수 있습니다.
+
+```tsx title="OverlayMarker.tsx"
+interface OverlayMarkerProps {
+  celeb: { id: number; name: string; profileImageUrl: string };
+  map: google.maps.Map;
+  restaurant: { id: number; name: string; lat: number; lng: number };
+}
+
+function OverlayMarker({ celeb, map, restaurant }: OverlayMarkerProps) {...} // 생략
+
+//highlight-start
+function areEqual(prevProps: OverlayMarkerProps, nextProps: OverlayMarkerProps) {
+  const { restaurant: prevRestaurant, celeb: prevCeleb } = prevProps;
+  const { restaurant: nextRestaurant, celeb: nextCeleb } = nextProps;
+
+  // 이전 props와 현재 props가 동일한 restaurant.id, celeb.id를 갖는지 확인합니다.
+  return prevRestaurant.id === nextRestaurant.id && prevCeleb.id === nextCeleb.id;
+}
+
+export default React.memo(OverlayMarker, areEqual);
+//highlight-end
+```
+
+:::danger 충분히 고려해봅시다.
+사용자 정의 함수를 사용하는 것은 정말 마지막 수단입니다.
+오히려 사용자 정의 함수를 사용함으로써 속도가 더욱 느려질 수 있습니다.
+또한 React에서는 사용자 정의 함수를 사용하게 되면 [모든 props를 비교해야 한다](https://react.dev/reference/react/memo#specifying-a-custom-comparison-function)고 명시하고 있습니다.
+
+위와 같이 사용하는것은 사실 굉장히 위험하죠. 정말 특별한 경우가 아니라면 지양해 주세요.
+:::
+
+이제 원하는대로 동작을 잘 하는군요!
+
+<ReactPlayer playing loop url={markerAfterVideoUrl} style={{ marginBottom: '20px' }} />
+
+## 그럼에도 불구하고
+
+왜 사용자 정의 함수를 사용했냐구요?
+
+- 우선 이미지가 사용되었기 때문입니다.
+  - 많으면 한번의 지도 이동으로 18개의 이미지를 불러와야 합니다.
+  - 리렌더링하는 것 보다는 사용자 정의 함수를 사용한 memo가 속도면에서도, 사용자 측면에서도 이점을 얻을 수 있다고 보았습니다.
+- 데이터 구조에 대한 확신을 가지고 있었습니다.
+  - OverlayMarker가 갖는 restaurant.id와 celeb.id 쌍에 대해 고유하다고 확신할 수 있습니다.
+- 추후에 tanstack-query를 도입하게되면 해당 로직 제거를 고려할 수 있습니다.
+  - 데이터 캐싱이 가능해지고 리렌더링 방지에 따른 큰 이점이 없어지면 해당 로직을 추후에 제거해 볼 수 있습니다.
+
+상당히 모험적인 도전이었지만, memo를 좀 더 효율적으로 활용할 수 있는 방향을 생각해 볼 수 있었습니다.
+
+여러분도 제 경험을 통해 React.memo를 좀 더 자세히 들여다보는 시간이 되었기를 기대합니다.

@@ -83,7 +83,7 @@ Overlay 컴포넌트를 제작할 때는 아래의 글을 참고했습니다.
 
 이제 한 번 지도에서 마커가 어떻게 표시 되는지 확인해볼까요?
 
-<ReactPlayer playing loop url={markerBeforeVideoUrl} style={{ marginBottom: '20px' }} />
+<ReactPlayer controls playing loop url={markerBeforeVideoUrl} style={{ marginBottom: '20px' }} />
 
 보다시피 지도가 움직일 때 마다 마커 전부를 새로 그리고 있습니다.
 문제는 2가지 입니다.
@@ -230,7 +230,7 @@ export default React.memo(OverlayMarker, areEqual);
 
 이제 원하는대로 동작을 잘 하는군요!
 
-<ReactPlayer playing loop url={markerAfterVideoUrl} style={{ marginBottom: '20px' }} />
+<ReactPlayer controls playing loop url={markerAfterVideoUrl} style={{ marginBottom: '20px' }} />
 
 ## 그럼에도 불구하고
 

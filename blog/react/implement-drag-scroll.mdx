@@ -1,0 +1,278 @@
+---
+date: 2023-11-21
+authors: d0dam
+title: '마우스 드래그 스크롤 구현하기'
+description: '스크롤 영역을 스크롤 바로 조절 하기도 하지만, 마우스를 좌클릭 한 상태로 드래그 하는 방식을 사용하기도 합니다. 이번 포스트에서는 리액트에서 마우스 드래그 스크롤을 구현합니다.'
+keywords: ['React', 'react 드래그 스크롤', '드래그 스크롤', 'drag scroll']
+tags:
+  - React
+---
+
+import teacherListScrollMp4 from './videos/implement-drag-scroll/teacher-list-scroll.mp4';
+import ReactPlayer from 'react-player';
+
+스크롤 영역을 스크롤 바로 조절 하기도 하지만, 마우스를 좌클릭 한 상태로 드래그 하는 방식을 사용하기도 합니다. 이번 포스트에서는 리액트에서 마우스 드래그 스크롤을 구현합니다.
+
+<!--truncate-->
+
+## 시작
+
+[schooldots의 소개 페이지](https://schooldots.me/introduce)를 개발하며 겪은 일입니다. (시간에 따라 페이지가 달라지거나 없어졌을 수 있습니다.)
+
+다음과 같이 x축으로 스크롤 할 수 있는 선생님 목록을 구현해야 했습니다.
+
+<img src="/img/blog/implement-drag-scroll/teacher-list-scroll.gif" alt="이미지" style={{ marginBottom: '20px' }} />
+
+여기서 한 가지 요구사항이 더 추가되었습니다.
+
+- 마우스를 좌클릭 한 상태로 해당 영역에서 드래그를 하면 스크롤처럼 동작하게 한다.
+
+이 요구사항을 어떻게 구현하면 좋을까요?
+
+## 이벤트 파악하기
+
+우선 요구사항에서 이벤트가 어떻게 발생해야 하는지 정리해 봅시다.
+
+- **마우스를 좌클릭 한 상태**로 해당 영역에서 **드래그**를 하면 스크롤처럼 동작하게 한다.
+
+마우스를 좌클릭 한 상태인 onMouseDown 이벤트와 드래그를 위한 onMouseMove 나 onDrag 이벤트가 필요하겠네요.
+이 때 **마우스를 좌클릭 한 상태로 드래그**를 했을 때 동작해야 하므로 onMouseDown 이벤트가 발생하고 onMouseUp 이벤트가 발생하기 전에만 onMouseMove 혹은 onDrag 이벤트가 동작하면 될 것 같습니다.
+
+이런식으로 이벤트가 동작할 수 있도록 hook을 설계해 보죠. 모든 이벤트는 Mouse event로 통일했습니다.
+
+```ts title="useDragScroll.ts"
+const useDragScroll = () => {
+  const [isActive, setIsActive] = useState(false);
+
+  const inActive = () => setIsActive(false);
+  const active = () => setIsActive(true);
+
+  const onMouseMove = () => {
+    if (isActive) {
+      ...
+    }
+  };
+
+  const onMouseDown = () => active();
+
+  const onMouseUp = () => inActive();
+
+  return { active, inactive, onMouseDown, onMouseMove, onMouseUp };
+};
+```
+
+이렇게 하면 Mouse가 눌렸을 때만 onMouseMove의 내부 로직을 실행할 수 있습니다.
+
+## 스크롤바 움직이기
+
+마우스를 드래그한 만큼 스크롤바를 움직여주기 위해서 어떻게 해야 할까요?
+
+마우스가 눌렸을 때 위치와 마우스가 움직였을 때의 위치 차를 이용하면 해당 거리만큼 스크롤 바를 움직여 줄 수 있습니다.
+마우스 위치를 가져오기 위해서는 마우스 이벤트 객체가 필요하기 때문에 이벤트 객체를 불러와 보도록할게요.
+
+그리고 이 이벤트를 어느 태그에 적용하는지 외부에서 제네릭으로 전달해 줄 수 있도록 하겠습니다.
+
+```ts title="useDragScroll.ts"
+const useDragScroll = <T extends HTMLElement>() => {
+  const [isActive, setIsActive] = useState(false);
+
+  const inActive = () => setIsActive(false);
+  const active = () => setIsActive(true);
+
+  const onMouseMove: React.MouseEventHandler<T> = (e) => {
+    if (isActive) {
+      ...
+    }
+  };
+
+  const onMouseDown: React.MouseEventHandler<T> = (e) => active();
+
+  const onMouseUp: React.MouseEventHandler<T> = (e) => inActive();
+
+  return { active, inActive, onMouseDown, onMouseMove, onMouseUp };
+};
+```
+
+이제 마우스의 위치를 가져오고, 위치의 변화만큼 스크롤을 움직여보겠습니다.
+이번에 구현해야 하는 선생님 목록은 X 축 스크롤을 지원하기 때문에 X 축을 중심으로 구현해 보겠습니다.
+
+마우스 이벤트 객체의 `clientX`를 통해 현재 마우스의 X 축 위치를 가져올 수 있습니다.
+
+마우스를 움직일 때 마우스를 눌렀을 때보다 X 축으로 이동한 만큼 스크롤을 이동시켜줘야 합니다. 이 거리는 이렇게 표현 가능하겠네요.
+
+```
+현재 마우스 X 축 위치 - 마우스를 눌렀을 때 X 축 위치;
+```
+
+현재 마우스 위치는 onMouseMove에서 구할 수 있겠네요. 마우스를 눌렀을 때 X 축 위치는 onMouseMove 함수에서는 구할 수 없으니 별도의 상태로 저장해 두겠습니다.
+
+```ts title="useDragScroll.ts"
+const useDragScroll = <T extends HTMLElement>() => {
+  const [isActive, setIsActive] = useState(false);
+  const [mouseDownClientX, setMouseDownClientX] = useState(0);
+
+  const inActive = () => setIsActive(false);
+  const active = () => setIsActive(true);
+
+  const onMouseMove: React.MouseEventHandler<T> = (e) => {
+    if (isActive) {
+      //highlight-start
+      // 마우스를 움직일 때 현재 위치에서 마우스를 눌렀을 때의 위치 차 계산
+      const moveX = e.clientX - mouseDownClientX;
+      // currentTarget의 스크롤을 위에 계산한 위치 차만큼 이동
+      e.currentTarget.scrollTo(moveX, 0);
+      //highlight-end
+    }
+  };
+
+  const onMouseDown: React.MouseEventHandler<T> = (e) => {
+    active();
+    //highlight-next-line
+    setMouseDownClientX(e.clientX); // 마우스를 눌렀을 때 해당 X 축 위치 저장
+  };
+
+  const onMouseUp: React.MouseEventHandler<T> = (e) => {
+    inActive();
+  };
+
+  return { active, inActive, onMouseDown, onMouseMove, onMouseUp };
+};
+```
+
+## 기존 스크롤 위치 저장하기
+
+이제 다 된 것 같지만 남아있는 문제점이 있습니다.
+
+사용자가 드래그 스크롤을 시도할 때 마다 마우스를 누르고 이동하는 과정에서 위치차가 0 에서부터 변화하기 때문에 기존에 스크롤이 어느정도 되어있어도 다시 스크롤을 처음부터 하게 됩니다.
+아래와 같이 말이죠..
+
+<img src="/img/blog/implement-drag-scroll/teacher-list-scroll-2.gif" alt="이미지" style={{ marginBottom: '20px' }} />
+
+그래서 기존 스크롤 위치를 알고, 기존 스크롤 위치에서부터 스크롤이 가능하게 바꾸어야 합니다.
+기존 스크롤 위치는 마우스를 누를 때 가져오면 좋을 것 같네요.
+
+아래와 같이 기존 스크롤 위치를 바탕으로 스크롤을 하도록 변경하였습니다.
+
+```ts title="useDragScroll.ts"
+const useDragScroll = <T extends HTMLElement>() => {
+  const [isActive, setIsActive] = useState(false);
+  const [prevPositionX, setPrevPositionX] = useState(0);
+  const [mouseDownClientX, setMouseDownClientX] = useState(0);
+
+  const inActive = () => setIsActive(false);
+  const active = () => setIsActive(true);
+
+  const onMouseMove: React.MouseEventHandler<T> = (e) => {
+    if (isActive) {
+      const moveX = e.clientX - mouseDownClientX;
+      //highlight-start
+      // positionX를 바탕으로 moveX 만큼 스크롤 위치를 바꿔줍니다.
+      e.currentTarget.scrollTo(prevPositionX + moveX, 0);
+      //highlight-end
+    }
+  };
+
+  const onMouseDown: React.MouseEventHandler<T> = (e) => {
+    active();
+    setMouseDownClientX(e.clientX);
+    //highlight-start
+    // 마우스를 누르면 눌렀을 시점의 스크롤 위치가 저장됩니다.
+    // X 축 스크롤이기 때문에 scrollLeft를 사용했습니다.
+    setPrevPositionX(e.currentTarget.scrollLeft);
+    //highlight-end
+  };
+
+  const onMouseUp: React.MouseEventHandler<T> = (e) => {
+    inActive();
+  };
+
+  return { active, inActive, onMouseDown, onMouseMove, onMouseUp };
+};
+```
+
+이제는 원하는대로 동작하는군요!
+
+## 디테일 더하기
+
+뭔가 스크롤을 할 때 마우스를 누른 상태로 끄는 작업이다보니 해당 영역에서 마우스 커서도 잡고 끄는 형태로 만들어주면 좋을 것 같습니다.
+
+마침 마우스 커서에는 '잡기' 상태를 나타내는 'grab' 과 '잡고있는' 상태를 나타내는 'grabbing' 이 있습니다.
+이걸 적용시켜 보죠. 마우스를 누르고 있을 때는 '잡고있는' 상태로, 마우스를 떼면 '잡기' 상태로 커서를 표현해 주면 될 것 같습니다.
+
+```ts title="useDragScroll.ts"
+const useDragScroll = <T extends HTMLElement>() => {
+  const [isActive, setIsActive] = useState(false);
+  const [prevPositionX, setPrevPositionX] = useState(0);
+  const [mouseDownClientX, setMouseDownClientX] = useState(0);
+
+  const inActive = () => setIsActive(false);
+  const active = () => setIsActive(true);
+
+  const onMouseMove: React.MouseEventHandler<T> = (e) => {
+    if (isActive) {
+      const moveX = e.clientX - mouseDownClientX;
+      e.currentTarget.scrollTo(prevPositionX + moveX, 0);
+    }
+  };
+
+  const onMouseDown: React.MouseEventHandler<T> = (e) => {
+    active();
+    setMouseDownClientX(e.clientX);
+    setPrevPositionX(e.currentTarget.scrollLeft);
+    //highlight-start
+    // 마우스를 누르고 있을 때 잡기 상태
+    e.currentTarget.style.cursor = 'grabbing';
+    //highlight-end
+  };
+
+  const onMouseUp: React.MouseEventHandler<T> = (e) => {
+    inActive();
+    //highlight-start
+    // 마우스를 떼면 잡기 상태
+    e.currentTarget.style.cursor = 'grab';
+    //highlight-end
+  };
+
+  return { active, inActive, onMouseDown, onMouseMove, onMouseUp };
+};
+```
+
+:::tip
+추가적으로 안의 리스트 아이템에 이미지가 드래그 되는 현상이나 텍스트 영역이 잡히는 현상이 있다면 아래와 같은 css를 알아보세요.
+
+- [user-select](https://developer.mozilla.org/en-US/docs/Web/CSS/user-select)
+- [[접두사]-user-select](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariCSSRef/Articles/StandardCSSProperties.html#//apple_ref/doc/uid/TP30001266--webkit-user-drag)
+
+:::
+
+이제 이 훅을 사용해서 선생님 목록을 drag scroll 할 수 있게 해볼까요?
+
+```tsx title="TeacherList.tsx"
+function TeacherList() {
+  const { onMouseDown, onMouseMove, onMouseUp, inActive } = useDragScroll<HTMLUListElement>();
+
+  return (
+    <S.TeacherCardList
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={inActive} // 리스트 밖으로 나가도 비활성화 되게 사용했습니다.
+    >
+      {TEACHER_LIST.map(({ ...props }) => (
+        <TeacherCard {...props} />
+      ))}
+    </S.TeacherCardList>
+  );
+}
+```
+
+아래와 같이 잘 되는 것을 확인할 수 있습니다.
+
+<ReactPlayer controls playing loop url={teacherListScrollMp4} style={{ marginBottom: '20px' }} />
+
+## 추가적으로
+
+이 방법이 드래그 스크롤을 구현하는데 가장 적합하다고는 할 수 없습니다.
+onDrag 이벤트를 사용할 수도 있었고, 이벤트 객체의 currentTarget 대신에 useRef를 이용해 ref에 접근할 수도 있었습니다.
+
+이렇게도 드래그 스크롤을 구현할 수도 있겠구나~! 정도로만 참고해주세요!

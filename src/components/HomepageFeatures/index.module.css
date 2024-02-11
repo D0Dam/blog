@@ -1,81 +1,85 @@
-.sidebar > ul > li > a {
-  color: black;
-  text-decoration: none;
+h1 {
+  font-size: 60px;
+  margin: 32px 0 24px 0;
+
+  @media only screen and (max-width: 780px) {
+    font-size: 48px;
+  }
 }
 
-.sidebar > ul > li > a:hover {
-  color: #2e8555;
-  text-decoration: none;
+h3 {
+  font-size: 20px;
+  color: #666;
+  margin-bottom: 24px;
+
+  @media only screen and (max-width: 780px) {
+    font-size: 16px;
+  }
 }
 
 .container {
-  width: 100%;
-  max-width: 1140px;
-  height: 100%;
+  margin: 0 auto;
+  width: 720px;
 
-  margin: 2rem auto;
-  display: flex;
-  flex-wrap: wrap;
+  @media only screen and (max-width: 780px) {
+    width: 90%;
+  }
 }
 
-.sidebar-section {
-  position: relative;
-  width: 100%;
-  padding: 0 1rem;
-  max-width: calc(3 / 12 * 100%);
+.line {
+  min-width: 100%;
+  height: 1px;
+  background: #e0e0e0;
 }
 
-.sidebar {
-  position: fixed;
-}
-
-.sidebar-name {
-  font-size: 1.25rem;
-  font-weight: 700;
-
-  margin-bottom: 1rem;
-}
-
-.sidebar > ul {
-  list-style: none;
-  padding: 0;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-.sidebar > ul > li {
-  display: list-item;
-  text-align: -webkit-match-parent;
-  margin-top: 0.7rem;
-}
-
-.main-section {
+.posts {
+  margin-top: 32px;
   display: flex;
   flex-direction: column;
-  gap: 48px;
-  width: calc(7 / 12 * 100%);
+  list-style-type: none;
+  margin-left: 0;
+  padding-left: 0;
+  & > li {
+    font-size: 18px;
+    margin: 8px 0;
+
+    @media only screen and (max-width: 780px) {
+      font-size: 16px;
+    }
+
+    & > a {
+      color: #2e8555;
+    }
+  }
 }
 
-.intro {
+.more {
   width: 100%;
   display: flex;
-  justify-content: space-around;
-  border-bottom: 1px solid #eee;
+  flex-direction: row-reverse;
+  margin-bottom: 32px;
+
+  & > a {
+    width: fit-content;
+    padding-right: 12px;
+
+    @media only screen and (max-width: 780px) {
+      font-size: 16px;
+    }
+  }
 }
 
-.intro > div {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  line-height: 40px;
-  font-size: 32px;
-}
+.info {
+  margin: 32px 0;
 
-.img {
-  width: 256px;
-}
+  & > div {
+    margin: 12px 0;
+  }
+  & > div > span {
+    font-size: 18px;
 
-.message {
-  font-size: 32px;
-  text-align: center;
+    @media only screen and (max-width: 780px) {
+      font-size: 16px;
+    }
+  }
 }

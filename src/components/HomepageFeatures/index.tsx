@@ -20,7 +20,7 @@ export default function HomepageFeatures(): JSX.Element {
         <div className={styles.line} />
         <ul className={styles.posts}>
           {recentPosts.map((item) => (
-            <li key={item.permalink}>
+            <li key={item.permalink} className={styles.post}>
               <a href={`${item.permalink}`}>{item.title}</a>
             </li>
           ))}

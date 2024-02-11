@@ -1,20 +1,12 @@
 h1 {
   font-size: 60px;
   margin: 32px 0 24px 0;
-
-  @media only screen and (max-width: 780px) {
-    font-size: 48px;
-  }
 }
 
 h3 {
   font-size: 20px;
   color: #666;
   margin-bottom: 24px;
-
-  @media only screen and (max-width: 780px) {
-    font-size: 16px;
-  }
 }
 
 a {
@@ -24,10 +16,6 @@ a {
 .container {
   margin: 0 auto;
   width: 720px;
-
-  @media only screen and (max-width: 780px) {
-    width: 90%;
-  }
 }
 
 .line {
@@ -48,11 +36,8 @@ a {
 .post {
   font-size: 18px;
   margin: 8px 0;
-
-  @media only screen and (max-width: 780px) {
-    font-size: 16px;
-  }
 }
+
 .more {
   width: 100%;
   display: flex;
@@ -63,23 +48,42 @@ a {
 .more > a {
   width: fit-content;
   padding-right: 12px;
-
-  @media only screen and (max-width: 780px) {
-    font-size: 16px;
-  }
 }
 
 .info {
   margin: 32px 0;
+}
 
-  & > div {
-    margin: 12px 0;
+.info > div {
+  margin: 12px 0;
+}
+
+.info > div > span {
+  font-size: 18px;
+}
+
+@media only screen and (max-width: 780px) {
+  h1 {
+    font-size: 48px;
   }
-  & > div > span {
-    font-size: 18px;
 
-    @media only screen and (max-width: 780px) {
-      font-size: 16px;
-    }
+  h3 {
+    font-size: 16px;
+  }
+
+  .container {
+    width: 90%;
+  }
+
+  .post {
+    font-size: 16px;
+  }
+
+  .more > a {
+    font-size: 16px;
+  }
+
+  .info > div > span {
+    font-size: 16px;
   }
 }

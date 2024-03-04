@@ -1,0 +1,176 @@
+---
+date: 2024-02-10
+authors: d0dam
+title: 'styled-components stylelint적용과 자동수정(feat. yarn berry에서 pnpm으로)'
+description: 'styled-components와 같은 css in js를 쓸 때 stylelint와 자동수정을 적용하려면 어떻게 해야 될까요? 최신 버전 기준으로 stylelint를 적용하며 겪었던 이야기를 해볼까 합니다.'
+keywords: ['React', 'styled-components', 'css-in-js', 'vscode-stylelint extension', 'stylelint']
+tags:
+  - React
+  - Stylelint
+---
+
+styled-components와 같은 css in js를 쓸 때 stylelint와 자동수정을 적용하려면 어떻게 해야 될까요? 최신 버전 기준으로 stylelint를 적용하며 겪었던 이야기를 해볼까 합니다.
+
+<!--truncate-->
+
+## stylelint를 쓰게 된 이유
+
+회사에서 대규모 개편이 예정 되어 있었습니다.
+그래서 새롭게 개편 프로젝트를 위한 개발 환경 세팅을 하게 되었습니다.
+자세한 개편 내용과 디자인이 나오기 전까지 남는 시간이 있어서 개편을 시작할 때 최대한 편하고 빠르게 작업할 수 있도록 환경을 미리 구축해 두고 싶었습니다.
+
+그중에서도 css 코드 스타일 컨벤션을 stylelint에 인가하고 vscode-stylelint extension을 사용해 DX를 높혀보려 했습니다.
+
+## 개발 환경
+
+개발환경은 다음과 같습니다.
+
+- typescript v5.2.2
+- react v18.2.0
+- styled-components v6.1.8
+- stylelint v16.2.1
+- vscode-stylelint extension v1.3.0
+
+## stylelint 세팅
+
+react와 styled-components를 설치했다는 가정 하에 진행하겠습니다.
+
+styled-components 공식문서의 [tooling](https://styled-components.com/docs/tooling#stylelint)을 참고하면 초기 설정은 쉽게 구상할 수 있습니다.
+styled-components에서는 stylelint v15 이상을 쓰라고 추천하고 있습니다. stylelint를 v14나 그 이하의 버전을 사용하실 분들은 [이 과정](https://styled-components.com/docs/tooling#for-stylelint-v14-and-below)을 거치면 됩니다.
+
+우선 stylelint를 설치해 볼까요?
+stylelint의 기본적인 lint 설정을 적용하고 싶다면 `stylelint-config-standard`도 설치해 줍시다.
+
+```
+// npm
+npm install --save-dev stylelint stylelint-config-standard
+
+// yarn
+yarn add -D stylelint stylelint-config-standard
+
+// pnpm
+pnpm add -D stylelint stylelint-config-standard
+```
+
+styled-components의 문법을 파싱하고 해석하기 위해서 `postcss-styled-syntax`를 설치해 줍니다.
+
+```
+// npm
+npm install --save-dev postcss-styled-syntax
+
+// yarn
+yarn add -D postcss-styled-syntax
+
+// pnpm
+pnpm add -D postcss-styled-syntax
+```
+
+이번 프로젝트에서는 [stylelint-config-clean-order](https://github.com/kutsan/stylelint-config-clean-order) 에서 제공하는 css 속성 나열 규칙을 바탕으로 추가적인 컨벤션을 구축하기로 했습니다.
+그래서 저는 이 패키지도 설치해 줄게요.
+
+:::tip
+yarn berry의 경우 postcss-styled-syntax를 설치하면 이 의존성인 postcss를 같이 설치해 달라고 하니 참고해주세요.
+
+<img src="/img/blog/config-stylelint/yarn-postcss-install.png" alt="이미지" style={{ marginBottom: '20px' }} />
+
+또한 postcss를 설치하게 되면 v8 이상이 설치될 텐데, 이렇게 되면 [stylelint에서 쓰는 postcss와 설치한 postcss랑 버전이 일치하지 않아 문제](https://github.com/stylelint-scss/stylelint-config-standard-scss/issues/2)가 생깁니다.
+package.json에서 postcss를 resolution에 넣어주세요.
+
+```json title="package.json"
+{
+  ...
+  "devDependencies": {
+    ...
+    "postcss": "^8.4.35",
+  },
+  "resolutions": {
+    "postcss": "^8.4.35"
+  },
+}
+```
+
+:::
+
+이제 `.stylelintrc` 파일을 프로젝트 root에 만들어 줍시다.
+
+```json title=".stylelintrc"
+{
+  "extends": ["stylelint-config-standard", "stylelint-config-clean-order"],
+  "customSyntax": "postcss-styled-syntax"
+}
+```
+
+이제 `package.json`에 stylelint를 실행시키기 위한 script를 작성해 봅시다.
+
+```json title="package.json"
+{
+  ...
+  "scripts": {
+    "lint:css":"stylelint './src/**/*.{ts,tsx,js,jsx}'"
+    "lint:css:fix":"stylelint './src/**/*.{ts,tsx,js,jsx}' --fix"
+  }
+}
+```
+
+이제 스크립트를 실행해 보면 제대로 동작하는 것을 확인할 수 있습니다.
+
+```
+npm run lint:css
+
+npm run lint:css:fix
+```
+
+## vscode-stylelint extension 연결하기
+
+vscode에서 stylelint extension을 설치해 주세요.
+
+<img src="/img/blog/config-stylelint/vscode-stylelint-extension.png" alt="이미지" style={{ marginBottom: '20px' }} />
+
+설치가 끝나면 프로젝트 root에 .vscode 폴더를 만든 후 settings.json 파일을 만들어 프로젝트에 적용할 vscode 세팅을 설정합니다.
+
+```json
+{
+  ...
+  "editor.codeActionsOnSave": {
+    // 선택적으로 always를 쓰서도 됩니다.
+    "source.fixAll.stylelint": "explicit",
+  },
+  // user의 기본 세팅이 true라면 설정하지 않아도 됩니다.
+  "stylelint.enable": true,
+  // css-in-js 방식이므로 typescript나 typescriptreact에서도 stylelint가 동작하게 합니다. js 환경의 경우 javascript, javascriptreact를 추가해 주세요.
+  "stylelint.validate": ["css", "scss", "postcss", "typescript", "typescriptreact"],
+  // css in js에 맞는 stylelint 문법을 적용합니다.
+  "stylelint.customSyntax": "postcss-styled-syntax"
+}
+```
+
+이제 `ts, tsx`파일에 작성한 `css in js`가 파일이 저장될 때 마다 fix 됩니다!
+
+자동수정이 안된다면 사용자 설정을 확인해보세요.
+stylelint.config가 비어 있거나 stylelint와 관련된 다른 유저 세팅에 의해 작동이 안되는 경우일 수 있습니다.
+
+:::tip
+yarn berry의 경우 `post-styled-syntax`를 찾지 못하는 문제가 생깁니다.
+그래서 [rc 파일을 js로 바꾸어서 customSyntax를 require로 가져오는 방법](https://github.com/stylelint/stylelint/issues/5632#issuecomment-972374915)으로 읽을 수 있습니다.
+
+하지만 stylelint의 경우 [v16 부터 cjs방식을 없앴습니다.](https://stylelint.io/migration-guide/to-16/)
+
+그리고 vscode-stylelint에서 yarn berry의 pnp 방식을 사용하는 경우 yarn esm pnp api를 쓰기 때문에 pnp 방식에서 사용하기 힘듭니다.
+
+이 경우에는(현재로써는) stylelint와 vscode-stylelint 버전을 낮추어 맞추거나, 다른 패키지 관리자를 사용해야합니다.
+:::
+
+저의 경우에도 yarn berry v4.1.0을 사용하다가 해당 문제가 발생했습니다.
+yarn berry의 pnp를 많은 프로젝트들이 지원한다고들 하지만, 아직까지도 다른 패키지와 호환이 안되거나 지원이 안되는 경우 등 자잘한 문제가 많이 발생하는 것 같습니다.
+이럴 때 마다 이런 자잘한 버그들에 지쳐 과연 yarn berry의 zero install과 pnp를 통해 얻는 장점이 그렇게 클까 생각해 보게 됩니다.
+
+결론적으로 프로젝트에는 pnpm을 도입하게 되었습니다. pnpm도 yarn berry 이상으로 빠르고 효율적인 종속성 관리와 디스크 절약이 가능했습니다.
+그리고 zero-install이 가지는 장점을 이번 프로젝트에서 살릴 수 없다고 판단했기 때문입니다.
+프로젝트의 특성상 브랜치마다 다른 의존성을 띄는 일은 드물었습니다.
+그리고 길어도 2~3년이면 새로 바뀔 프로젝트였기 때문에 의존성 관리 측면에서 추가적으로 관리하게 될 패키지가 적어 의존성이 생기는 일이 드물다고 판단했습니다.
+
+물론 이 선택에 대해 물음표를 던질 수도 있습니다. pnp를 처음 알았을 때는 정말 좋은 방향이라고 생각했거든요.
+나중에는 또 어떻게 생각이 변할지 모르겠습니다. 하지만 지금으로써는 이 선택에 만족하고 있습니다!
+
+stylelint에서 시작해서 어쩌다 패키지 관리자 이야기까지 하게 되었네요.
+이번 기회를 통해 패키지 관리자의 도입도 프로젝트의 특성과 연관지어서 생각해보게 되어 좋았습니다.

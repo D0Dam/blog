@@ -1,0 +1,314 @@
+---
+date: 2024-03-31
+authors: d0dam
+title: 'tanstack query를 프로젝트에서 어떻게 사용하면 좋을까?'
+description: '회사에서 지금까지 사용된 tanstack query의 구조를 개선하면서 들었던 고민과 해결 방법을 적어보고자 합니다.'
+keywords: ['React', 'react 지도', 'react memo', 'memo', '메모이제이션']
+tags:
+  - React
+---
+
+회사에서 지금까지 사용한 tanstack query의 구조를 개선하면서 들었던 고민과 해결 방법을 적어보고자 합니다.
+
+<!--truncate-->
+
+이 글은 tanstack query의 기본 개념을 알고 있다는 가정 하에 작성하였습니다.
+
+## 비동기 상태 관리에 대한 생각
+
+[tanstack query](https://www.npmjs.com/package/@tanstack/react-query)는 비동기 상태 관리를 위해 사용합니다.
+어쩌면 요즘 프론트 개발자들이 가장 많이 사용하는 도구라고 이야기해도 무방할 정도로 많은 다운로드 수를 기록하고 있죠.
+이 지표가 프론트 개발에 있어 비동기 상태 관리가 얼마나 중요한지 보여준다고 생각합니다.
+
+같은 생각입니다.
+저는 프론트 개발에 있어서 가장 중요한 요소가 **비동기**와 **상태 관리**라고 생각합니다.
+결국 사용자의 경험을 극대화 시키기 위해서는 비동기 상태를 어떻게 보여줄지를 빼 놓을 수 없는 것 같습니다.
+그래서일까요?
+더 좋은 경험을 위해 디테일하게 코드를 작성하게 됩니다.
+기본 구조가 좋지 않으면 개발자는 코드 유지보수가 점점 힘들어지고 재활용하기도, 읽기도 많이 불편할겁니다.
+
+## 앞으로를 위해
+
+저희 회사에서도 react 기반에 tanstack query v4를 사용합니다.
+하지만 구조 자체가 확실히 잡혀 있지 않았습니다.
+필요할 때마다 가져다 쓴 탓일까요?
+어떤 비동기 상태는 훅으로 묶여있기도 하고, 어떤 비동기 상태는 `axios apiClient`로 그냥 사용하고 있습니다.
+api 요청 로직과 tanstack query, 그리고 커스텀 훅까지 갖는 서로간의 의존성도 강합니다.
+그래서 새로운 요구사항이 나올 때마다 동일한 api를 사용하더라도 api로직부터 새로 작성해야 되죠.
+
+비동기 상태를 잘 관리하기 위해 도입한 tanstack query일텐데, 이 장점을 전혀 못 살리고 있는 것처럼 보였습니다.
+그래서 tanstack query v5를 도입하면서 버전업도 하고, 구조를 팀원들과 같이 잡아보기로 했습니다.
+
+## query key 관리
+
+:::note 참고
+
+사실, tanstack query를 사용하면서 많은 부분이 api 요청을 위해 쓰입니다.
+그래서 api 함수 형식부터 구조를 잡고 갔습니다.
+이번 블로깅에 같이 작성하기에는 내용이 커질 것 같아 추후 따로 블로깅 해보겠습니다.
+
+:::
+
+[`query key factory`](https://tkdodo.eu/blog/effective-react-query-keys) 라는 개념을 사용하기로 했습니다.
+tanstack query에서 query key는 특정 query에 대한 고유 의존성을 줄 수 있습니다.
+그리고 이 query key는 필수값이죠.
+
+대체적으로 이 query key에 변동을 주어 query function을 재호출하거나 `queryClient.invalidateQueries` 를 사용해 특정 키에 해당하는 queries를 무효화 해주기도 합니다.
+맞습니다. 마치 `useEffect`의 의존성과 같이 동작합니다.
+query function이 많아질 때마다 고유의 query key가 많아지게 됩니다.
+어떤 문제가 생길가요?
+
+- 중복되면 안되는 query key가 중복될 수 있습니다.
+- 같은 query key를 사용해야해도 똑같이 일일히 적어주어야 합니다.
+- 특정 query function을 초기화 하고 싶을 때 query key를 계속 찾게 되면 수고스러움이 있습니다.
+
+`query key factory`는 위의 문제를 해결하기 위해 사용했습니다.
+
+### query key 나누기
+
+이전에 회사 프로젝트에 쓰인 query key는 특정 기준 없이 처음 사용하는 인원이 작성했기 때문에 불안정했습니다.
+그래서 query key factory를 만들기 앞서, query key를 어떻게 나눌 건지 팀에 확실히 알려줄 필요가 있었습니다.
+
+query key가 길어지는 대부분의 경우가 api 호출이기 때문에 api 호출을 예시로 들겠습니다.
+
+아래와 같은 api url은 query key를 작성할 때 크게 문제가 되지 않았습니다.
+
+```ts title="course"
+const course = 'https://examaple.com/course';
+const courseDetail = 'https://examaple.com/course/:id';
+
+const courseQueryKeys = ['course'];
+const courseDetailsQueryKeys = (id) => ['course', id];
+```
+
+하지만 아래와 같은 경우는 어떻게 할까요?
+
+```ts title="courseLecture"
+const courseLecture = 'https://examaple.com/course/:id/lecture/:id?sort=new&type=selling&page=0&size=10';
+```
+
+바로 어떻게 나눌지 감이 딱 왔을까요?
+크게 query key에 글어갈 값을 3가지로 나누어 볼 수 있습니다.
+
+1. url에 포함된 연관있는 도메인명: 'course', 'lecture'
+2. id: 'courseId', 'lectureId'
+3. query params: 'sort', 'type', 'page', 'size'
+
+1, 2번째의 경우는 차례대로 query key 배열에 포함시키면 될 것 같습니다.
+3번째의 경우는 객체로 관리해 query params 각각이 고유의 key가 되지 않도록 했습니다.
+그러면 아래와 같이 query key를 정리할 수 있을 것 같습니다.
+
+```ts title="courseLecture"
+const courseLecture = 'https://examaple.com/course/1/lecture/2?sort=new&type=selling&page=0&size=10';
+const courseId = 1;
+const lectureId = 2;
+const queryParams = {
+  sort: 'new',
+  type: 'selling',
+  page: 0,
+  size: 10,
+};
+
+const courseLectureQueryKeys = (courseId, lectureId, queryParams) => [
+  'course',
+  courseId,
+  'lecture',
+  lectureId,
+  queryParams,
+];
+```
+
+이제 한 도메인에 대해 아래와 같이 query key만을 별도 객체로 모아 관리를 할 수 있습니다.
+
+```ts title="course query key factory"
+const courseKeys = {
+  all: ['course'] as const,
+  detail: (courseId: number) => ['course', courseId] as const,
+  lectures: (courseId: number) => [...courseKeys.detail(courseId), 'lecture'] as const,
+  // queryParams의 경우 안의 값이 optional 일지 아닐지에 대해 꼭 안넘겨 주어도 될 수 있습니다.
+  lectureDetail: (courseId: number, lectureId: number, queryParams: LectureParams) =>
+    [...courseKeys.lectures(courseId), lectureId, { queryParams }] as const,
+};
+```
+
+## 구조 잡기
+
+이제 query factory도 만들었으니 구조를 한 번 잡아봅시다.
+
+모든 비동기 상태에 대해 훅으로 묶어주기로 했습니다.
+
+```ts title="useCourseQuery.ts"
+import { useQuery } from '@tanstack/react-query';
+
+import { getCourse } from '@/apis/course';
+import { courseKeys } from '@/hooks/query/keyFactory/courseKeys';
+
+function useCourseQuery() {
+  const course = useQuery({
+    queryKey: courseKeys.all,
+    queryFn: getCourse,
+  });
+
+  return course;
+}
+
+export default useCourseQuery;
+```
+
+파일 이름은 `use~~~Query`, `use~~~Mutation` 으로 통일하기로 했습니다.
+
+회사의 경우 같은 비동기 상태들을 admin이나 개편 페이지 제작에도 동일하게 많이 사용하는 편이었습니다.
+그래서 최대한 추후에도 따로 분리해서 사용할 수 있도록 root의 `hooks/queries` 폴더에두고 이 폴더에 `queryFactory`를 두었습니다.
+
+아래와 같은 구조가 되겠네요!
+
+```
+└── 📁hooks
+    └── 📁queries
+        └── 📁keyFactory
+            └── courseKeys.ts
+        └── useCourseQuery.ts
+        └── useCourseMutation.ts
+```
+
+이제 특정 query를 사용할 때 필요한 훅을 가져와 쓰면 되겠네요!
+
+```tsx title="Course.tsx"
+import CourseItem from '@/components/CourseItem';
+import useCourseQuery from '@/hooks/queries/useCourseQuery';
+
+function Course() {
+  const { data: course } = useCourseQuery();
+
+  return <CourseItem {...course} />;
+}
+
+export default Course;
+```
+
+## 아쉬움, 고민
+
+이 구조를 잡고 들여오면서 몇일 사용해 본 결과, 아쉬운 부분이 있었습니다.
+
+- query key와 query key를 사용하는 훅이 응집력을 좀 더 가져도 좋았을 것 같습니다.
+  - query key와 훅이 별도의 폴더와 파일로 분리되어 있어서 co-location을 이루지 못한 것 같습니다.
+- 하나의 비동기 상태에 대해 useSuspenseQuery와 useQuery, useQueries, prefetch 등의 메서드를 선택적으로 쓰기 힘듭니다.
+  - 처음부터 특정 비동기 상태에 대한 훅을 만들어 버리기 때문입니다.
+- 현재의 구조는 tanstack query v5로 올린 의미가 없는 형태라고 느껴졌습니다.
+  - v5의 최대 변화점은 여러 인자들이 객체로 넘기게끔 변했다는 점입니다. 이 점을 제대로 활용해보지 못한 것 같습니다.
+
+> '아예 특정 query를 넘기기 위한 객체 인자들을 묶어주면 어떨까?'
+
+찾아보니, 떡하니 있더군요.🥲 바로 [`query options`](https://tanstack.com/query/v5/docs/framework/react/reference/queryOptions)입니다.
+
+## query options
+
+query options는 특정 query 메서드에 대한 인자 객체를 정의할 수 있게 해줍니다.
+예를 들어봅시다.
+
+```ts title="courseQueryOptions.ts"
+import { queryOptions } from '@tanstack/react-query';
+
+const courseQueryOptions = queryOptions({
+  queryKey: ['course'],
+  queryFn: getCourse,
+});
+```
+
+이게 위에서 말한 문제들을 해결해 줄까요? 한 번 확인해 봅시다.
+
+- query key와 query key를 사용하는 훅이 응집력을 좀 더 가져도 좋았을 것 같습니다.
+
+-> 이제 query key를 따로 분리하는 구조가 아니기 때문에 같은 객체에 선언해 놓을 수 있습니다. 아래와 같이 말이죠.
+
+```ts title="courseQueries.ts"
+import { queryOptions } from '@tanstack/react-query';
+
+import type { CourseListParams } from '@/types/course/remote';
+
+const courseQueries = {
+  allKeys: ['course'] as const,
+  all: () =>
+    queryOptions({
+      queryKey: courseQueries.allKeys(),
+      queryFn: () => getCourse(),
+    }),
+  listKeys: (params: CourseListParams) => [...courseQueries.allKeys(), params],
+  list: (params: CourseListParams) =>
+    queryOptions({
+      queryKey: courseQueries.listKeys(params),
+      queryFn: () => getCourseList(params),
+    }),
+};
+```
+
+- 하나의 비동기 상태에 대해 useSuspenseQuery와 useQuery, useQueries, prefetch 등의 메서드를 선택적으로 쓰기 힘듭니다.
+
+-> 사실 이제 훅을 만들 필요가 없어졌습니다. Mutation을 훅으로 만든다면 만들 수 있겠지만 이제 필요한 곳에서 특정 queryOptions를 꺼내 사용하면 됩니다.
+
+```tsx title="Course.tsx"
+import CourseItem from '@/components/CourseItem';
+import { useQuery } from '@tanstack/react-query';
+
+function Course() {
+  const { data: course } = useQuery(courseQueries.all());
+  // 이제 이렇게 선택적으로 사용하면 됩니다.
+  // const { data: course } = useSuspenseQuery(courseQueries.all());
+
+  return <CourseItem {...course} />;
+}
+
+export default Course;
+```
+
+- 현재의 구조는 tanstack query v5로 올린 의미가 없는 형태라고 느껴졌습니다.
+
+-> 이제 queryOptions를 활용해 인자를 객체로 관리하면서 버전업에 대해 의미를 둘 수도 있겠네요!
+
+## 다시, 구조 잡기
+
+변한 형식에 따라 구조를 새로 잡아봅시다.
+사실, 객체로 비동기 상태 로직을 관리하게 되면서 훅과의 의존성도 끊어줄 수 있었습니다.
+그래서 root에 이 query 만을 관리하는 폴더를 둘 수 있게 되었죠.
+
+```title="root/src"
+└── 📁queryFactory // queries도 좋아 보입니다.
+    └── alarmQueries.ts
+    └── classroomQueries.ts
+    └── courseQueries.ts
+    └── userQueries.ts
+```
+
+각각의 queries 들은 tanstack query v5를 사용하는 어디에서든지 자유롭게 꺼내 쓸 수 있게 독립된 환경이 만들어졌습니다.
+
+## 이런건 안되는거 아닌가요?
+
+이 구조를 사용하다 보니 팀원들에게 다음과 같은 질문들이 나오더군요.
+
+:::tip
+
+> Q: useInfinityQuery를 사용할 땐 queryOptions를 사용할 수 없어요..!
+
+A: [infiniteQueryOptions](https://tanstack.com/query/v5/docs/framework/react/reference/infiniteQueryOptions)도 있답니다!
+
+:::
+
+:::tip
+
+> Q: Mutation도 객체로 묶어서 관리할 수 없을까요?
+
+A: 이건 좀 다른 이야기 같습니다.
+mutation의 경우 촉발 메서드가 `useMutation` 밖에 없습니다.
+그리고 다른 mutation 기능 간에도 옵션이 같을 수가 없죠.
+때문에 굳이 옵션을 공유할 일이 없지 않을까요?
+같은 mutation을 여러 군데에서 사용한다면 해당 mutation을 훅으로 묶어주면 됩니다.
+:::
+
+## 마무리
+
+이렇게 비동기 상태에 대한 구조를 완전히 바꾸어서 도입을 해 보았습니다.
+
+결과적으로 대만족! 입니다. 개발자 경험 특면에서도 앞으로도 이용 가능한, 한 눈에 보기 쉬운 구조여서 좋았습니다.
+특히 queryOptions를 가지고 어떤 메서드를 사용할 지 열리게 둔 점이 앞으로의 ui를 그릴 때 좀 더 넓은 시각으로 바라볼 수 있게 된 것 같습니다.
+
+'tanstack query를 프로젝트에서 어떻게 사용하면 좋을까?'에 대한 질문이 조금이나마 해소 되었기를 바랍니다.

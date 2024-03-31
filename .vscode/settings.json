@@ -6,5 +6,5 @@
   "prettier.singleQuote": true,
   "prettier.tabWidth": 2,
   "prettier.trailingComma": "all",
-  "cSpell.words": ["dotenv", "postcss", "stylelint", "stylelintrc", "Vite"]
+  "cSpell.words": ["dotenv", "postcss", "stylelint", "stylelintrc", "tanstack", "Vite"]
 }

@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://www.googletagmanager.com">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-DBVZBC9QT5"></script>
 <script>function gtag(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],gtag("js",new Date),gtag("config","G-DBVZBC9QT5",{anonymize_ip:!0})</script><link rel="stylesheet" href="/assets/css/styles.5f43df59.css">
-<link rel="preload" href="/assets/js/runtime~main.10b3827b.js" as="script">
+<link rel="preload" href="/assets/js/runtime~main.e0f62d74.js" as="script">
 <link rel="preload" href="/assets/js/main.c8517df5.js" as="script">
 </head>
 <body class="navigation-with-keyboard">
@@ -31,9 +31,7 @@
 어떤 비동기 상태는 훅으로 묶여있기도 하고, 어떤 비동기 상태는 <code>axios apiClient</code>로 그냥 사용하고 있습니다.
 api 요청 로직과 tanstack query, 그리고 커스텀 훅까지 갖는 서로간의 의존성도 강합니다.
 그래서 새로운 요구사항이 나올 때마다 동일한 api를 사용하더라도 api로직부터 새로 작성해야 되죠.</p><p>비동기 상태를 잘 관리하기 위해 도입한 tanstack query일텐데, 이 장점을 전혀 못 살리고 있는 것처럼 보였습니다.
-그래서 tanstack query v5를 도입하면서 버전업도 하고, 구조를 팀원들과 같이 잡아보기로 했습니다.</p><h2 class="anchor anchorWithHideOnScrollNavbar_WYt5" id="query-key-관리">query key 관리<a href="#query-key-관리" class="hash-link" aria-label="query key 관리에 대한 직접 링크" title="query key 관리에 대한 직접 링크">​</a></h2><div class="theme-admonition theme-admonition-note alert alert--secondary admonition_LlT9"><div class="admonitionHeading_tbUL"><span class="admonitionIcon_kALy"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path></svg></span>참고</div><div class="admonitionContent_S0QG"><p>사실, tanstack query를 사용하면서 많은 부분이 api 요청을 위해 쓰입니다.
-그래서 api 함수 형식부터 구조를 잡고 갔습니다.
-이번 블로깅에 같이 작성하기에는 내용이 커질 것 같아 추후 따로 블로깅 해보겠습니다.</p></div></div><p><a href="https://tkdodo.eu/blog/effective-react-query-keys" target="_blank" rel="noopener noreferrer"><code>query key factory</code></a> 라는 개념을 사용하기로 했습니다.
+그래서 tanstack query v5를 도입하면서 버전업도 하고, 구조를 팀원들과 같이 잡아보기로 했습니다.</p><h2 class="anchor anchorWithHideOnScrollNavbar_WYt5" id="query-key-관리">query key 관리<a href="#query-key-관리" class="hash-link" aria-label="query key 관리에 대한 직접 링크" title="query key 관리에 대한 직접 링크">​</a></h2><div class="theme-admonition theme-admonition-note alert alert--secondary admonition_LlT9"><div class="admonitionHeading_tbUL"><span class="admonitionIcon_kALy"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M6.3 5.69a.942.942 0 0 1-.28-.7c0-.28.09-.52.28-.7.19-.18.42-.28.7-.28.28 0 .52.09.7.28.18.19.28.42.28.7 0 .28-.09.52-.28.7a1 1 0 0 1-.7.3c-.28 0-.52-.11-.7-.3zM8 7.99c-.02-.25-.11-.48-.31-.69-.2-.19-.42-.3-.69-.31H6c-.27.02-.48.13-.69.31-.2.2-.3.44-.31.69h1v3c.02.27.11.5.31.69.2.2.42.31.69.31h1c.27 0 .48-.11.69-.31.2-.19.3-.42.31-.69H8V7.98v.01zM7 2.3c-3.14 0-5.7 2.54-5.7 5.68 0 3.14 2.56 5.7 5.7 5.7s5.7-2.55 5.7-5.7c0-3.15-2.56-5.69-5.7-5.69v.01zM7 .98c3.86 0 7 3.14 7 7s-3.14 7-7 7-7-3.12-7-7 3.14-7 7-7z"></path></svg></span>참고</div><div class="admonitionContent_S0QG"><p>이번 글에서는 비동기 로직를 api 로직을 예시로 설명하고 있습니다.</p></div></div><p><a href="https://tkdodo.eu/blog/effective-react-query-keys" target="_blank" rel="noopener noreferrer"><code>query key factory</code></a> 라는 개념을 사용하기로 했습니다.
 tanstack query에서 query key는 특정 query에 대한 고유 의존성을 줄 수 있습니다.
 그리고 이 query key는 필수값이죠.</p><p>대체적으로 이 query key에 변동을 주어 query function을 재호출하거나 <code>queryClient.invalidateQueries</code> 를 사용해 특정 키에 해당하는 queries를 무효화 해주기도 합니다.
 맞습니다. 마치 <code>useEffect</code>의 의존성과 같이 동작합니다.
@@ -56,7 +54,7 @@ mutation의 경우 촉발 메서드가 <code>useMutation</code> 밖에 없습니
         <br>
         Copyright © 2022 <a href="https://github.com/d0dam" target="_blank" rel="noreferrer noopener">minjaeKim</a>. All rights reserved.
         </span></div></div></div></footer></div>
-<script src="/assets/js/runtime~main.10b3827b.js"></script>
+<script src="/assets/js/runtime~main.e0f62d74.js"></script>
 <script src="/assets/js/main.c8517df5.js"></script>
 </body>
 </html>

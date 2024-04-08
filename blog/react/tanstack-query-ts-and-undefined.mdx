@@ -1,0 +1,173 @@
+---
+date: 2024-04-08
+authors: d0dam
+title: 'tanstack query + ts에서 undefined 매개변수 엄격하게 처리하기'
+description: 'tanstack query와 typescript를 사용하면서 종종 undefined 일 수 있는 매개변수를 넘기기도 합니다. 어떤 방법으로 undefined를 처리해 줄 수 있을지 고민해보았습니다.'
+keywords: ['react', 'tanstack query', 'typescript']
+tags:
+  - react
+  - tanstack query
+  - typescript
+---
+
+tanstack query와 typeScript를 사용하면서 종종 undefined 일 수 있는 매개변수를 넘기기도 합니다. 어떤 방법으로 undefined를 처리해 줄 수 있을지 고민해보았습니다.
+
+<!--truncate-->
+
+## 들어가기 앞서
+
+이 글은 tanstack query v5와 typescript v5, react v18 기반으로 작성하였습니다.
+
+## 생각하게 된 계기
+
+url의 path에 고유한 id를 포함시키는, 생각보다 흔한 경우였습니다.
+
+예를 들어, 여러 course에 각각 고유의 id가 있다고 하면 `https://example.com/course/${id}` 와 같은 형식으로 url을 나누어 줄 수 있죠.
+이 때 useParams를 사용해 id값을 url에서 가져와 api를 요청하는 상황이었습니다.
+
+```tsx title="CourseDetailPage.tsx"
+const getCourseDetail = async (id: number) => {
+  const res = await apiClient.get<CourseDetailResponse>(`/course/${id}`);
+
+  return res.data;
+};
+
+function CourseDetailPage() {
+  const { id } = useParams();
+  const courseId = Number(id);
+  const { data } = useSuspenseQuery({
+    queryKey: ['course', courseId],
+    queryFn: () => getCourseDetail(courseId, params),
+  });
+
+  return <div>{data.content}</div>;
+}
+```
+
+이 경우 문제가 되는 부분은 바로 id 값의 type 입니다.
+
+```
+const { id } = useParams(); // const id: string | undefined
+```
+
+id가 없는 경우도 존재할 수 있기 때문이죠.
+하지만 api 로직 자체로는 id가 필수값입니다. 그래서 id가 undefined인 경우를 배제시키고 싶었습니다.
+
+문득, 전에는 이런 상황이 발생할 때 마다 손이 가는대로 코드를 짯던 기억이 떠올랐습니다.
+그 코드를 나중에 다시 사용하려고할 때 굉장히 불편하더군요.
+그래서 이번 기회에 이 상황을 깔끔하게 처리하기 위한 방법을 고민해 보았습니다.
+
+## 방법 찾기
+
+우선 id가 undefined인 경우 api 함수 호출을 막아야합니다.
+
+이 때 가장 흔하게 사용하는 방법은 tanstack query의 [`enabled`](https://tanstack.com/query/v5/docs/framework/react/guides/disabling-queries#lazy-queries) 옵션을 사용하는 것입니다.
+이걸 활용해 데이터를 lazy하게 받을 수 있도록 할 수 있죠.
+
+```tsx title="enabled 사용 예시"
+function CourseDetailPage() {
+  const { id } = useParams();
+  const courseId = Number(id);
+  const { data } = useSuspenseQuery({
+    queryKey: ['course', courseId],
+    queryFn: () => getCourseDetail(courseId),
+    //highlight-next-line
+    enabled: !!courseId,
+  });
+
+  return <div>{data.content}</div>;
+}
+```
+
+이제 id가 falsy한 값을 가지게 된 동안에는 `useSuspenseQuery`가 동작하지 않을 것입니다.
+
+하지만 이 경우 id의 타입 자체는 변하지 않습니다. 여기서 undefined 타입을 어떻게 걸러줄지 고민해보아야 합니다.
+
+### api 함수에 id의 타입을 undefined도 받는다.
+
+그렇다면 api 함수에 undefined 처리 로직이 들어가야하겠네요.
+
+```ts title="getCourseDetail.ts"
+const getCourseDetail = async (id: number | undefined) => {
+  if (typeof id === 'undefined') {
+    return Promise.reject(new Error('id가 undefined입니다.'));
+  }
+
+  const res = await apiClient.get<CourseDetailResponse>(`/course/${id}`);
+
+  return res.data;
+};
+```
+
+이 경우도 괜찮다고 생각하지만 이 함수의 본래 목적을 생각했을때는 `완전 좋다!` 라고 말하기 힘들었습니다.
+
+제 생각을 적어보자면...
+
+- `getCourseDetail`이 id가 undefined인 인자를 받지만, 이 경우 에러가 난다는 점이 묘연합니다.
+  - `getCourseDetail`의 id가 undefined를 받겠다고 정의한 함수라면, id가 undefined인 경우에도 api호출이 가야 직관적으로 짜여진 함수라고 생각이 듭니다.
+
+`getCourseDetail` 함수 자체에 집중해봅시다.
+
+`getCourseDetail` 함수가 가지는 api url은 id가 undefined인 경우가 존재하지 않습니다.(`/course`인 경우가 없거나 CourseDetailResponse가 아닌 다른 응답이 옵니다.)
+
+그래서 `getCourseDetail` 함수의 인자인 id는 무조건 존재해야하므로 undefined를 받을 수 없게 설계하는 것이 맞다고 판단했습니다.
+실제로 enabled 옵션을 통해 id가 존재할때만 함수를 실행시키고 싶어했다는 것은 애초에 api 함수의 id 인자로 undefined가 오는것을 피하고 싶었다는 이야기가 아닐까 합니다.
+
+### api 함수 외부에서 id 타입 좁히기
+
+그럼 이제 외부에서 id 타입을 number로 넘겨주기 위한 처리를 해봅시다.
+
+```tsx title="CourseDetailPage.tsx"
+function CourseDetailPage() {
+  const { id } = useParams();
+  const courseId = Number(id);
+  const { data } = useSuspenseQuery({
+    queryKey: ['course', courseId],
+    //highlight-next-line
+    queryFn: courseId ? () => getCourseDetail(courseId) : undefined,
+    enabled: !!courseId,
+  });
+
+  return <div>{data.content}</div>;
+}
+```
+
+이렇게 하면 id가 존재할 때만 queryFn을 활성화 시킬 수 있습니다.
+이 과정은 type level에서 동작하게 될 것이고, queryFn은 옵셔널하므로 undefined가 올 수 있습니다.
+하지만 그만큼 queryFn 함수가 다른 방향으로 동작하지 않도록 확실하게 할 필요가 있습니다.
+
+## skipToken
+
+좀 더 type safe 하게 하기위한 [`skipToken`](https://tanstack.com/query/v5/docs/framework/react/guides/disabling-queries#typesafe-disabling-of-queries-using-skiptoken)이라는 것이 존재합니다.
+tanstack query v5부터 사용이 가능합니다.
+쿼리를 lazy하게 내려주기 위한 `enabled: false`의 동작에도 타입이 따라갈 수 있게 할 수 있죠.
+그래서 `enabled` 옵션 없이도 원하는 동작을 구현할 수 있습니다.
+
+타입은 unique symbol로 되어있습니다.
+
+```ts title="skipToken type"
+declare const skipToken: unique symbol;
+```
+
+이제 사용해볼까요?
+
+```tsx title="CourseDetailPage.tsx"
+import { useSuspenseQuery, skipToken } from '@tanstack/react-query';
+
+function CourseDetailPage() {
+  const { id } = useParams();
+  const courseId = id ? Number(id) : undefined;
+  const { data } = useSuspenseQuery({
+    queryKey: ['course', courseId],
+    //highlight-next-line
+    queryFn: courseId ? () => getCourseDetail(courseId) : skipToken,
+  });
+
+  return <div>{data.content}</div>;
+}
+```
+
+## 마무리
+
+skipToken을 통해 `unique symbol`을 사용한 예시도 이렇게 확인해보니 감회가 새롭네요!
+원하는대로 api 함수를 보전하고 type safe하게 처리를 할 수 있게 되어서 좋았습니다.😊

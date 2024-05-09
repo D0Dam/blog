@@ -71,7 +71,11 @@ pnpm add -D postcss-styled-syntax
 :::tip
 yarn berry의 경우 postcss-styled-syntax를 설치하면 이 의존성인 postcss를 같이 설치해 달라고 하니 참고해주세요.
 
-<img src="/img/blog/config-stylelint/yarn-postcss-install.png" alt="이미지" style={{ marginBottom: '20px' }} />
+<img
+  src="/img/blog/config-stylelint/yarn-postcss-install.png"
+  alt="이미지"
+  style={{ marginBottom: '20px' }}
+/>
 
 또한 postcss를 설치하게 되면 v8 이상이 설치될 텐데, 이렇게 되면 [stylelint에서 쓰는 postcss와 설치한 postcss랑 버전이 일치하지 않아 문제](https://github.com/stylelint-scss/stylelint-config-standard-scss/issues/2)가 생깁니다.
 package.json에서 postcss를 resolution에 넣어주세요.
@@ -124,7 +128,11 @@ npm run lint:css:fix
 
 vscode에서 stylelint extension을 설치해 주세요.
 
-<img src="/img/blog/config-stylelint/vscode-stylelint-extension.png" alt="이미지" style={{ marginBottom: '20px' }} />
+<img
+  src="/img/blog/config-stylelint/vscode-stylelint-extension.png"
+  alt="이미지"
+  style={{ marginBottom: '20px' }}
+/>
 
 설치가 끝나면 프로젝트 root에 .vscode 폴더를 만든 후 settings.json 파일을 만들어 프로젝트에 적용할 vscode 세팅을 설정합니다.
 

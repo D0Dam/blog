@@ -647,6 +647,16 @@ function Select({ children, defaultValue = '', placeholder = '' }) {
 이제 select안에 option들을 채워 넣으면 됩니다.
 이 때 SlotGroup을 사용한 경우를 고려해야합니다. 이 경우 `<option>`을 `<optgroup>`으로 묶어주어야 하기 때문이죠.
 
+:::info Q&A
+
+Q: SlotGroup 안에 SlotGroup이 중첩될 수 있나요?
+
+A: 아니요. `<select>`도 `<optgroup>`이 중첩 불가하기 때문에 이를 최대한 따라가기 위해 중첩은 허용하지 않았습니다.
+
+[permitted content](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/optgroup#technical_summary)를 확인해보면 `<optgroup>`은 `<option>`만을 허용합니다.
+
+:::
+
 특정 Slot이 SlotGroup안의 요소인지 판별하기 위해서는 어떻게 해야 할까요?
 SlotGroup 안에 들어가는 children의 경우 추가적인 props을 전달하는 방법을 생각해 보았습니다.
 

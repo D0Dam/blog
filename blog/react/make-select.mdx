@@ -55,13 +55,13 @@ function Select({ name, children, defaultValue = '', placeholder = '' }: SelectP
     setCurrentValue(e.target.value);
   };
 
-  ... // 이외에 Esc나 외부 클릭으로 close() 실행
+  ...
 
   return (
     <div>
-      <button onClick={toggle}>{currentValue || placeholder}</button>
+      <button onClick={toggle}>{선택된 옵션 이름 || placeholder}</button>
       // css로 isOpen이 false 인경우 안보이게 처리
-      <ul $isOpen={isOpen}>
+      <ul $isOpen={isOpen} onKeyDown={...}>
         <li onClick={handleOptionClick} value="1">
           option 1
         </li>
@@ -154,7 +154,7 @@ function Select({ children, defaultValue = '', placeholder = '' }) {
   return (
     <SelectContext.Provider value={contextValue}>
       <S.SelectContainer>
-        <S.SelectButton onClick={toggle}>{currentValue || placeholder}</S.SelectButton>
+        <S.SelectButton onClick={toggle}>{선택된 옵션 이름 || placeholder}</S.SelectButton>
 
         <S.OptionList $isOpen={isOpen}>{children}</S.OptionList>
       </S.SelectContainer>
@@ -223,13 +223,15 @@ function SelectExample() {
 
 `<select>`에서 focus는 다분하게 바뀔 수 있습니다.
 `<select>`가 아닌 자체 커스텀 Select를 사용한다면 `<select>`에서 일어나는 focus 처리를 해 주어야 합니다.
-한 번 `<select>`에서 focus가 일어나는 상황을 정리해보겠습니다.
+
+또한 Focus를 구현하기 위해 사용하는 방법으로 다른 `<select>`의 동작도 충분히 구현할 수 있습니다.
+기본적으로 `<select>`에서 focus가 일어나는 상황을 정리해보겠습니다.
 
 1. `<select>` 상자 클릭 시 현재 select된 옵션이 focus
 2. 각각의 `<option>`에 마우스 hover 시 해당 옵션이 focus
 3. 화살표 위, 아래 키를 누르면 현재 focus된 옵션의 위, 아래 옵션이 focus
 4. `<option>` 클릭 시 옵션 상자를 벗어나서 `<select>` 상자에 focus
-5. 엔터, Esc 키를 누르거나 옵션 상자 이외의 영역을 클릭해 옵션 상자를 벗어나면 `<select>` 상자에 focus
+5. space, 엔터, Esc 키를 누르거나 옵션 상자 이외의 영역을 클릭해 옵션 상자를 벗어나면 `<select>` 상자에 focus
 
 등 [추가적으로 더 존재](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/)하지만 위의 항목들을 중점으로 다뤄보겠습니다.
 
@@ -249,7 +251,7 @@ Slot 컴포넌트에서는 2번, 4번 상황을 해결할 수 있습니다.
 - 2번 - 각각의 `<option>`에 마우스 hover 시 해당 옵션이 focus
 - 4번 - `<option>` 클릭 시 옵션 상자를 벗어나서 `<select>` 상자에 focus
 
-2번의 경우 단순하게 `onMouseEnter`시 disabled가 아니라면 focus를 줍니다.
+2번의 경우 단순하게 `onMouseEnter`시 disabled가 아니라면 focus를 주고 `onMouseLeave` 시 blur를 줍니다.
 
 4번의 경우 옵션 클릭 시 Select 컴포넌트 button의 ref를 가져와 focus를 줍니다.
 
@@ -273,6 +275,12 @@ function Slot({ value, children, disabled = false }) {
 
     slotRef.current?.focus();
   };
+
+  const handleMouseLeave = () => {
+    if (disabled) return;
+
+    slotRef.current?.blur();
+  };
   // highlight-end
 
   return (
@@ -283,6 +291,8 @@ function Slot({ value, children, disabled = false }) {
       onClick={handleClick}
       // highlight-next-line
       onMouseEnter={handleMouseEnter}
+      // highlight-next-line
+      onMouseLeave={handleMouseLeave}
       $disabled={disabled}
       $selected={currentValue === value}
     >
@@ -296,41 +306,54 @@ function Slot({ value, children, disabled = false }) {
 
 Select 컴포넌트에서는 5번 상황을 해결할 수 있습니다.
 
-- 5번 - 엔터, Esc 키를 누르거나 옵션 상자 이외의 영역을 클릭해 옵션 상자를 벗어나면 `<select>` 상자에 focus
+- 5번 - space, 엔터, Esc 키를 누르거나 옵션 상자 이외의 영역을 클릭해 옵션 상자를 벗어나면 `<select>` 상자에 focus
 
 공통적으로 `<button>`에 focus를 주고 옵션 상자를 닫는 일을 하고 있습니다.
-이 일을 하기 위한 이벤트가 keydown, 옵션 상자 외부 클릭이며 이 이벤트가 발생할 때 focus를 줄 수 있도록 합니다.
+이 일을 하기 위한 이벤트가 optionList의 keydown, 옵션 상자 외부 클릭이며 이 이벤트가 발생할 때 focus를 줄 수 있도록 합니다.
 
 ```tsx title="Select.tsx"
 ... // compound pattern을 위한 context 세팅
 
 function Select({ children, defaultValue = '', placeholder = '' }) {
-  //highlight-start
   const selectRef = useRef<HTMLDivElement | null>(null);
   const selectButtonRef = useRef<HTMLButtonElement | null>(null);
-  //highlight-end
 
-  ... // 생략
+  ...
 
-//highlight-start
   const closeOptionList = () => {
     close();
     selectButtonRef.current?.focus();
   }
 
+  const handleOptionListKeyDown: React.KeyboardEventHandler<HTMLUListElement> = (e) => {
+    // 이미 이벤트가 실행되는 중이라면 아무 동작도 하지 않습니다.
+    if (e.defaultPrevented) return;
+
+    switch (e.key) {
+      ...
+      case ' ':
+      case 'Enter':
+        closeOptionList();
+        break;
+      case 'Esc':
+      case 'Escape':
+        closeOptionList();
+        break;
+      default:
+        return;
+    }
+
+    e.preventDefault();
+  }
+
   useOnClickOutside(selectRef, closeOptionList);
-  useKeyEvent('keydown', 'Escape', closeOptionList);
-  useKeyEvent('keydown', 'Enter', closeOptionList);
-  //highlight-end
 
   return (
     <SelectContext.Provider value={contextValue}>
-    //highlight-next-line
       <S.SelectContainer ref={selectRef}>
-      //highlight-next-line
         <S.SelectButton ref={selectButtonRef} onClick={toggle}>{currentValue || placeholder}</S.SelectButton>
 
-        <S.OptionList $isOpen={isOpen}>{children}</S.OptionList>
+        <S.OptionList $isOpen={isOpen} onKeyDown={handleOptionListKeyDown}>{children}</S.OptionList>
       </S.SelectContainer>
     </SelectContext.Provider>
   );
@@ -523,6 +546,7 @@ function Slot({ value, children, disabled = false }) {
       //highlight-end
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       $disabled={disabled}
       $selected={currentValue === value}
     >
@@ -556,16 +580,18 @@ function SlotGroup({ children, label }) {
 
 `<input>`/`<select>`/`<textarea>`는 `<form>`과 많이 사용하는데, 이 때 문제가 발생합니다.
 
-### 값을 가져오는 방법이 다르다.
+### `<form>` 접근.
 
-`<select>`의 경우 name attribute에 접근해 해당하는 value를 가져올 수 있습니다.
+`<select>`의 경우 `<form>`을 통해 name attribute에 접근해 해당하는 value를 가져올 수 있습니다.
 커스텀한 Select 컴포넌트의 경우 이 동작을 구현할 수 없죠.
 
 ```tsx
+// 이와같이 사용할 수 없습니다.
+
 <form
   onSubmit={(e) => {
     e.preventDefault();
-    console.log(e.currentTarget.example.value); // 이와같이 사용할 수 없습니다.
+    console.log(e.currentTarget.example.value);
   }}
 >
   <select name="example">
@@ -656,7 +682,7 @@ interface SlotMapValue {
 - slotMapRef.current의 값을 모아 SlotMapValue 타입의 배열로 바꾸어 줍니다.
 - groupLabel이 있는 경우 같은 groupLabel을 가진 Slot끼리 한 객체로 묶어줍니다.
   ```tsx
-      const example = { label: 'groupname', options: [ option1 , option2 , ...], group: true };
+      const example = { groupLabel: 그룹라벨이름, options: [ option1 , option2 , ...] };
   ```
 - 위 과정을 통해 얻은 객체 배열을 바탕으로 객체 안에 group이 true인 경우 options들을 `<optgroup>`의 자식으로 넣습니다.
 
@@ -670,7 +696,7 @@ interface SlotMapValue {
   onChange={(e) => setCurrentValue(e.target.value)}
 >
   {groupSlotByLabel(Array.from(slotMapRef.current.values())).map((item) => {
-    if (그룹이 있으면) {
+    if (그룹인 객체면) {
       return (
         <optgroup label={item.label} key={item.label}>
           {item.element.map(({ value, option }) => (
@@ -691,7 +717,7 @@ interface SlotMapValue {
 </select>
 ```
 
-이제 `<select>`에 맞게 값을 가져오고 autocomplete 특성도 활용할 수 있게 되었습니다!
+이제 `<select>`에 맞게 `<form>`을 사용하고 autocomplete 특성도 활용할 수 있게 되었습니다!
 
 ## 마치며
 

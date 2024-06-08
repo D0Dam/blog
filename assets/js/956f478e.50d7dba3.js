@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdodam_log=self.webpackChunkdodam_log||[]).push([[771],{1754:a=>{a.exports=JSON.parse('{"label":"JS","permalink":"/blog/tags/js","allTagsPath":"/blog/tags","count":2}')}}]);

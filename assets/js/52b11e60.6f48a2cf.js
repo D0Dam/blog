@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdodam_log=self.webpackChunkdodam_log||[]).push([[7155],{9708:e=>{e.exports=JSON.parse('{"permalink":"/blog/tags/side-effect","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}')}}]);

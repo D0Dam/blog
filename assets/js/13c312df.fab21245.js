@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdodam_log=self.webpackChunkdodam_log||[]).push([[3643],{8404:e=>{e.exports=JSON.parse('{"title":"TypeScripts","slug":"/category/typescripts","permalink":"/docs/category/typescripts","navigation":{"previous":{"title":"Overview","permalink":"/docs/overview"},"next":{"title":"type-notation","permalink":"/docs/TypeScripts/type-notation"}}}')}}]);

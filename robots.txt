@@ -1,4 +1,4 @@
 User-agent:*
 Allow:/
 
-Sitemap: http://d0dam.xyz/sitemap.xml
+Sitemap: https://d0dam.xyz/sitemap.xml

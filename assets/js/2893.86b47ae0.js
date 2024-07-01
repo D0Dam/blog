@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdodam_log=self.webpackChunkdodam_log||[]).push([[2893],{2893:(d,e,o)=>{o.r(e),o.d(e,{default:()=>l});o(758);var u=o(5557),a=o(6070);function l(){return(0,a.jsx)(u.rd,{to:"/blog"})}}}]);

@@ -1,6 +1,6 @@
 {
-  "name": "dodam-log",
-  "version": "0.0.0",
+  "name": "d0dam-log",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
